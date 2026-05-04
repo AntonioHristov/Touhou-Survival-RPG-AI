@@ -1,0 +1,50 @@
+JSON es el formato de texto que he elegido para guardar y cargar los datos de las partidas debido a su compatibilidad con lenguajes de programación y es fácil de entender para las IA y las personas.
+Los guardo en archivos con extensión .json aunque el "código" o contenido se puede copiar en el portapapeles, es texto al fin y al cabo
+(Lo siento si esperabas una definición más técnica, detallada y blablabla, esto es un intento de introducción para quienes empiecen de 0 con JSON evitando palabras técnicas para que se entienda)
+
+Características y Estructura Principal
+
+Texto Plano: JSON es simplemente texto, lo que facilita su envío por red.
+Pares Clave/Valor: Los datos se estructuran como "clave": "valor".
+Sintaxis Estricta: Las claves deben estar entre comillas dobles "" y separadas por dos puntos :.
+Ligero: Más compacto y rápido que XML (una alternativa más clásica)
+
+Ejemplo sencillo inventado
+
+{
+  "nombre": "Pepito",
+  "edad": 18,
+  "esEstudiante": false,
+  "habilidades": ["JavaScript", "JSON"],
+  "lapicero":{"color":"rojo", "centimetros":10, "tieneTinta":true}
+}
+
+Datos en pares: "nombre": "Pepito".
+Comas ,: Los pares se separan por comas.
+Llaves {}: Contienen objetos.
+Corchetes []: Contienen arreglos o listas.
+Comillas dobles "": Obligatorias para las claves y cadenas de texto.
+
+Tipos de Datos Permitidos:
+Cadena (String): "Hola"
+Número (Entero o decimal): 10 o 3.14
+Booleano: true o false
+Arreglo (Array): [1, 2, 3]
+Objeto: {...}
+Null: null
+
+Extras:
+No repitas claves en la misma jerarquía:
+{
+  "nombre": "Pepito",
+  "nombre": "Juanita"
+} -> mal
+{
+  "nombre": "Pepito",
+  "objetoRandom": {"Nombre": "Juanita"}
+} -> bien
+
+No olvides que empieza por "{" y termina por "}" el código.
+No olvides cerrar cuando abras comillas, corchetes, llaves, etc. También un ojo a las comas tras cada valor por si tienes de más o de menos (Lo típico que no te suele dejar "compilar", pero ya te acostumbrarás)
+
+Esto fue una introducción de JSON a mi estilo para quienes empiecen de 0, espero que os haya ayudado.

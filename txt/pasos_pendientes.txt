@@ -6,11 +6,6 @@ Cualquier bug descubierto, si es importante intentar arreglarlo, sino anotarlo
 *
 
 *
-Mejora README.md:
-Intentar mejorarlo
-*
-
-*
 Limpieza código existente:
 Evitar repetir código, organizar mejor, hacerlo corto y entendible, seguir buenas prácticas, etc, antes de seguir implementando nuevas funcionalidades (excepto bugs importantes, claro)
 *
