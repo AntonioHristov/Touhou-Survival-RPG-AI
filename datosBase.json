@@ -1,0 +1,523 @@
+{
+    "possibleDifficulties": {
+        "Easy": {
+            "intention": "Could survive and perhaps win any individual encounter even without weapons"
+        },
+        "Normal": {
+            "intention": "Good chance to survive and perhaps win encounters that would be rare to survive in Hard difficulty, but without total abuse (starting state could beat youkais like Rumia or Cirno, but rare to beat Yukari or Hecatia)."
+        },
+        "Hard": {
+            "intention": "Be realistic (merciless but without exaggerating player adversities)."
+        }
+    },
+    "engineConfig": {
+        "name": "Touhou Survival RPG",
+        "mode": "Hardcore",
+        "time": "24h format. 60min = 1h. Update after each action.",
+        "death": "hp <= 0: Permadeath",
+        "generalInfo": "If a value is unknown or could have infinite values, null is acceptable. Mechanics or values not specifying difficulty usually apply to all. 'omnipotent': true grants narrative omnipotence, but actions must be described in an atmospheric style, not just automatic victory. 'omnipotent' defaults to false; it is solely the player's decision to change it to true for themselves or selected NPCs."
+    },
+    "worldMechanics": {
+        "hourly_decay": {
+            "food": -1,
+            "water": -1,
+            "sleep": -1,
+            "hp_regen": 1.5,
+            "energy_regen": 100
+        },
+        "zero_penalty": {
+            "food": "-150hp/h",
+            "water": "-250hp/h",
+            "sleep": "-120hp/h, -70% stats",
+            "energy": "cannot move"
+        },
+        "magicForestSpores": {
+            "note":"Only in Magic Forest. 'states' in order ('magicForestToxin_h', 'stateThreshold_h')",
+            "magicForestSporesImmunity": 16.00,
+            "stateThreshold_h": 4,
+            "states": [
+                "1. Normal",
+                "2. Strong Discomfort/possible hallucinations",
+                "3. Moderate",
+                "4. Mild",
+                "5. Immune"
+            ],
+            "scale": {
+                "E": 1,
+                "N": 2,
+                "H": 3
+            }
+        }
+    },
+    "dynamicData": {
+        "worldState": {
+            "turnActionPlayer_id": "P1",
+            "gameLang": "ES",
+            "currDiff": "Easy",
+            "lastGeneratedObjId": 7,
+            "reusableObjIds": [],
+            "time": {
+                "day": 1,
+                "h": "06:00"
+            },
+            "lastNarration": {
+                "text": "Abres los ojos y el aire es denso, cargado con un aroma dulce pero irritante a moho y magia. Te encuentras en el suelo de un bosque donde los árboles son tan altos y frondosos que apenas dejan pasar la luz del amanecer. El silencio es casi absoluto, roto solo por el crujido de las ramas. Por ahora, parece que nadie ha notado tu llegada a este mundo desconocido. El Bosque misterioso en donde te encuentras te da la bienvenida con su característica neblina de esporas.",
+                "options": [
+                    "1. Revisar mi mochila y equipo para asegurarme de que todo esté en orden.",
+                    "2. Intentar elevarme un poco (Volar) para ver si hay algún camino o estructura cerca.",
+                    "3. Permanecer en silencio y observar el entorno buscando señales de vida (NPCs)."
+                ],
+                "OptChosen": ""
+            }
+        },
+        "chars": {
+            "id_tplMANDATORY": {
+                "ai_note": "Do not delete this tpl. Use this exact structure for every new NPC or player, adapting numerical values to context.",
+                "nick": "string",
+                "age": "numeric",
+                "isPlayer": "boolean",
+                "fem": "b",
+                "omnipotent": "b, d false",
+                "currentArea_id": "s",
+                "currentMiniArea_id": "s",
+                "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h), range: 0.00 - 'magicForestSporesImmunity'. Don't forget States from 'magicForestSpores'",
+                "state": "s",
+                "food": [
+                    "dec (current)",
+                    "d (max), human d 500"
+                ],
+                "water": [
+                    "d",
+                    "d, hd 100"
+                ],
+                "sleep": [
+                    "d",
+                    "d, hd 200"
+                ],
+                "hp": [
+                    "d",
+                    "d"
+                ],
+                "energy": [
+                    "d",
+                    "d (100 = average outsider human)"
+                ],
+                "magDmg": [
+                    "d",
+                    "d"
+                ],
+                "magDef": [
+                    "d",
+                    "d"
+                ],
+                "flySpd": [
+                    "d",
+                    "d"
+                ],
+                "physDmg": [
+                    "d",
+                    "d"
+                ],
+                "physDef": [
+                    "d",
+                    "d"
+                ],
+                "runSpd": [
+                    "d",
+                    "d"
+                ],
+                "refl": [
+                    "d",
+                    "d"
+                ],
+                "activeEffects": [
+                    "object (e.g.: { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'})"
+                ],
+                "skills": [
+                    "s (e.g.: fantasy seal, sword)"
+                ],
+                "memories": [
+                    "s (e.g.: left my Backpack at Marisa's house -> create that miniArea in area magic forest if it doesn't exist, same with new Areas)"
+                ],
+                "IAaddMemories":[""],
+                "inv": [
+                    "o, def clothes worn. If items available (e.g., weapons, Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
+                    "items like Backpack if not carried, use worldStorage with Same Area and miniArea with this char and leave the backback's info there until is carried again, etc",
+                    "Don't forget idObj in every object. reusableObjIds (first value and remove it from the list), if it's empty then lastGeneratedObjId +1 and update it. This is next obj ID available",
+                    {
+                        "weight_penalization": "food, energy, spd (Try low penalization)"
+                    }
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": "s",
+                        "recognized": "b"
+                    }
+                ],
+                "extra": [
+                    "o, other important details"
+                ],
+                "tplReimuDefault": {
+                    "idReimu": {
+                        "nick": "Reimu Hakurei",
+                        "age": 18,
+                        "isPlayer": false,
+                        "fem": true,
+                        "omnipotent": false,
+                        "currentArea_id": null,
+                        "currentMiniArea_id": null,
+                        "magicForestToxin_h": 16,
+                        "state": null,
+                        "food": [
+                            null,
+                            500
+                        ],
+                        "water": [
+                            null,
+                            100
+                        ],
+                        "sleep": [
+                            null,
+                            200
+                        ],
+                        "hp": [
+                            null,
+                            1500
+                        ],
+                        "energy": [
+                            null,
+                            250
+                        ],
+                        "magDmg": [
+                            null,
+                            2000
+                        ],
+                        "magDef": [
+                            null,
+                            1500
+                        ],
+                        "flySpd": [
+                            null,
+                            4500
+                        ],
+                        "physDmg": [
+                            null,
+                            100
+                        ],
+                        "physDef": [
+                            null,
+                            400
+                        ],
+                        "runSpd": [
+                            null,
+                            60
+                        ],
+                        "refl": [
+                            null,
+                            4000
+                        ],
+                        "activeEffects": [
+                            ""
+                        ],
+                        "skills": [
+                            "Volar, Spells, Armas",
+                            ""
+                        ],
+                        "memories": [
+                            "Conoce a casi todos, a los nuevos humanos perdidos no']"
+                        ],
+                        "IAaddMemories":[""],
+                        "inv": [
+                            {
+                                "idObj": "Next obj ID available",
+                                "n": "Hakurei Shrine Maiden (miko) outfit, customized and distinctive, predominantly red and white",
+                                "det": "Equipado"
+                            },
+                            {
+                                "weapons": [
+                                    {
+                                        "idObj": "Next obj ID available",
+                                        "n": "Gohei"
+                                    },
+                                    {
+                                        "idObj": "Next obj ID available",
+                                        "n": "Yin-Yang Orb"
+                                    },
+                                    {
+                                        "idObj": "Next obj ID available",
+                                        "n": "Ofuda",
+                                        "q": 5
+                                    }
+                                ]
+                            }
+                        ],
+                        "detectedCharsNearbyList": [
+                            {
+                                "nearby_pj_id": null,
+                                "recognized": false
+                            }
+                        ],
+                        "extra": [
+                            {}
+                        ]
+                    }
+                }
+            },
+            "P1": {
+                "nick": "Pepito",
+                "age": 18,
+                "isPlayer": true,
+                "fem": false,
+                "omnipotent": false,
+                "currentArea_id": "MagicForest",
+                "currentMiniArea_id": "ZonaArboles1",
+                "magicForestToxin_h": 0,
+                "state": "Normal",
+                "food": [
+                    500,
+                    500
+                ],
+                "water": [
+                    100,
+                    100
+                ],
+                "sleep": [
+                    200,
+                    200
+                ],
+                "hp": [
+                    3000,
+                    3000
+                ],
+                "energy": [
+                    500,
+                    500
+                ],
+                "magDmg": [
+                    3000,
+                    3000
+                ],
+                "magDef": [
+                    2500,
+                    2500
+                ],
+                "flySpd": [
+                    5000,
+                    5000
+                ],
+                "physDmg": [
+                    750,
+                    750
+                ],
+                "physDef": [
+                    1350,
+                    1350
+                ],
+                "runSpd": [
+                    375,
+                    375
+                ],
+                "refl": [
+                    5000,
+                    5000
+                ],
+                "activeEffects": [
+                    {}
+                ],
+                "skills": [
+                    "Esfera mágica básica",
+                    "Volar",
+                    "Master Spark",
+                    "Comunicacion mental (mensaje + respuesta) 20m max",
+                    ""
+                ],
+                "memories": [
+                    "Recuerdo un destello blanco antes de despertar aquí.",
+                    "Este bosque en donde desperté se siente hostil.",
+                    "Siento que tengo habilidades mágicas, pero no sé quién más habita este bosque."
+                ],
+                "IAaddMemories":[""],
+                "inv": [
+                    {
+                        "idObj": 0,
+                        "n": "Ropa exterior",
+                        "det": "Equipado"
+                    },
+                    {
+                        "idObj": 1,
+                        "n": "Mochila",
+                        "carried": true,
+                        "items": [
+                            {
+                                "idObj": 2,
+                                "n": "Manta térmica",
+                                "q": 1
+                            },
+                            {
+                                "idObj": 3,
+                                "n": "Linterna",
+                                "q": 1
+                            },
+                            {
+                                "idObj": 4,
+                                "n": "Agua",
+                                "q": 3
+                            },
+                            {
+                                "idObj": 5,
+                                "n": "Chocolate",
+                                "q": 5
+                            },
+                            {
+                                "idObj": 6,
+                                "n": "Paracetamol",
+                                "q": 8
+                            },
+                            {
+                                "idObj": 7,
+                                "n": "Dinero",
+                                "q": 100
+                            }
+                        ]
+                    }
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": null,
+                        "recognized": false
+                    }
+                ],
+                "extra": [
+                    {}
+                ]
+            }
+        },
+        "worldStorage": {
+            "SYSTEM_LOST_FOUND": {
+                "note": "Contenedor de objetos que han desaparecido de la vista del jugador pero existen en el mundo.",
+                "miniAreas": {
+                    "Contenedor_Global": [
+                    ]
+                }
+            },
+            "MagicForest": {
+                "weather": "Niebla densa",
+                "freq": [
+                    "Marisa",
+                    "Alice",
+                    "Rinnosuke",
+                    "Cirno",
+                    "Daiyousei",
+                    "Rumia",
+                    "Mystia",
+                    "wriggle",
+                    "Generic Fairies and minor Youkais"
+                ],
+                "occ": [
+                    "Generic Outsider Humans",
+                    "Yukari",
+                    "Ran",
+                    "Reimu",
+                    "Sakuya",
+                    "Youmu",
+                    "Mokou"
+                ],
+                "rare": [
+                    "Humans (Village)",
+                    "Scarlet Residents",
+                    "Eirin",
+                    "Kaguya",
+                    "Hecatia"
+                ],
+                "miniAreas": {
+                    "ZonaArboles1": [],
+                    "AlrededoresCasaMarisa": [],
+                    "EntradaPrincipalCasaMarisa": [],
+                    "AlrededoresCasaAlice": [],
+                    "EntradaPrincipalCasaAlice": [],
+                    "AlrededoresKourindou": [],
+                    "EntradaPrincipalKourindou": []
+                }
+            },
+            "HakureiShrine": {
+                "w": null,
+                "f": [
+                    "Reimu",
+                    "Marisa",
+                    "Yukari",
+                    "Aunn"
+                ],
+                "o": [
+                    "Various Youkai",
+                    "Sakuya",
+                    "Suika",
+                    "Alice"
+                ],
+                "r": [
+                    "Generic Outsider Humans",
+                    "Gods",
+                    "Tenshi"
+                ],
+                "miniAreas": {
+                    "Alrededores": [],
+                    "EntradaPrincipal": []
+                }
+            },
+            "ScarletMans": {
+                "w": null,
+                "f": [
+                    "Remilia",
+                    "Flandre",
+                    "Sakuya",
+                    "Patchouli",
+                    "Meiling",
+                    "Koakuma",
+                    "Fairies (Sirvientas e intrusas)",
+                    "Marisa"
+                ],
+                "o": [
+                    "Reimu",
+                    "Yukari",
+                    "Aya",
+                    "Gensokyo characters (Eventos)"
+                ],
+                "r": [
+                    "Humans (General)",
+                    "Distant residents (Yuyuko)"
+                ],
+                "miniAreas": {
+                    "Alrededores": [],
+                    "EntradaPrincipal": [],
+                    "Basement": []
+                }
+            },
+            "HumVill": {
+                "w": null,
+                "f": [
+                    "Keine",
+                    "Hieda",
+                    "Kosuzu",
+                    "Humans (General)"
+                ],
+                "o": [
+                    "Reimu",
+                    "Marisa",
+                    "Yukari",
+                    "Mamizou",
+                    "Mokou",
+                    "Byakuren"
+                ],
+                "r": [
+                    "Hostile Youkai",
+                    "Kanako",
+                    "Eirin",
+                    "Underworld Residents"
+                ],
+                "miniAreas": {
+                    "Alrededores": [],
+                    "EntradaPrincipal": []
+                }
+            }
+        }
+    }
+}

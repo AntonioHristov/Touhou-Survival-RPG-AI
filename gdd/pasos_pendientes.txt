@@ -1,0 +1,116 @@
+﻿Mi plan de pasos pendientes según mi prioridad actual (mayor a menor)
+
+*
+Bugs:
+Cualquier bug descubierto, si es importante intentar arreglarlo, sino anotarlo
+*
+
+*
+Mejora README.md:
+Intentar mejorarlo
+*
+
+*
+Limpieza código existente:
+Evitar repetir código, organizar mejor, hacerlo corto y entendible, seguir buenas prácticas, etc, antes de seguir implementando nuevas funcionalidades (excepto bugs importantes, claro)
+*
+
+*
+Personalización de valores existentes:
+Crear interfaz amigable para editar los valores en general de la partida, con su validador de integridad (ej: valor actual no supere al máximo). Probablemente con la opción de ver sus valores por defecto en cada dificultad en cada valor, dando la opción de aplicar ese valor por defecto en uno o varios valores a elección del jugador
+Habría que pensar si hacerlo en index.html o en otro archivo...
+*
+
+*
+Personalización valores nuevo jugador:
+Si detecta que no existe ningún jugador o se quiere añadir un nuevo jugador a la plantilla, entonces te pide todos los valores con opción de plantilla según dificultad (que se puede personalizar al gusto del jugador). Si no existe ningún jugador te obliga a crear uno antes de empezar a jugar (aunque sea de una dificultad con valores por defecto) pero si existiese algún jugador no te obligaría.
+*
+
+*
+Eliminar datos antiguos y obsoletos:
+Si las dificultades se hicieron como plantilla, eliminar el rastro innecesario (no guardar la dificultad, quitar notas o datos obsoletos/antiguos de valores según dificultad, etc)
+*
+
+*
+Mecánica hongos bosque mágico:
+retocar tiempos estado y añadir órdenes de estado repetibles que acaben en inmune (irrepetible al final)
+*
+
+*
+Decay y regeneración por hora:
+Añadir un tercer valor a los stats de los personajes (decayHour), -1 sería restar 1 en una hora, +1 al revés. Aplicarlo en SyncJSON.html según el tiempo transcurrido desde la última acción en todos los personajes cuyo valor no sea 0 o null el valor del decayHour
+*
+
+*
+IDS objetos:
+Generarlos mediante javascript automáticamente, no delegar a la IA su creación. No olvidar la lógica de destrucción de objetos (reusableObjIds) e intentar no mostrar ambas variables en el prompt (lastGeneratedObjId, reusableObjIds)
+*
+
+*
+Varios jugadores en misma partida:
+Contenido de "lastNarration" guardarlo en todos los jugadores (no npcs), opcionalmente en una lista que guarda las últimas 3 de cada jugador para "memoria reciente detallada" para la IA.
+Actualizar turnActionPlayer_id en SyncJSON.html sin delegarlo a la IA (como los decays)
+Testear que sea jugable
+*
+
+*
+Pequeñas mejoras pendientes:
+Opción eliminar personajes, tal vez reiniciar partida. 
+Botón abrir chatBot IA con algunos links (gemini, chatGPT, etc)
+Index: Botón copiar código JSON actual en portapapeles sin exportar.
+Index: botón abrir Sync con opción llevar todo el JSON en JSON 1 automáticamente.
+Sync: botón abrir index con JSON cargado del sincronizado.
+Sync: Permitir edición en JSON sincronizado.
+index: Sección créditos (ZUN, ias, recursos usados, los que me ayuden y yo)
+Sync: Personajes muertos al limbo
+index: Música (Opcional pero la experiencia es importante, en caso de que no tengan usar alguna default de touhou)
+index: botón página gratuita texto a voz (Opcional pero podría mejorar la experiencia)
+*
+
+*
+Modo Historia:
+Implementar forma de ganar (misiones secundarias + santuario hakurei) junto a posgame
+*
+
+*
+Stats pendientes:
+Orinar, defecar. La idea es darle realismo pero sería pura molesta y más tokens... pensar si vale la pena o no, en caso de que si implementarlo
+*
+
+*
+Época:
+Elegir si es antes, mediante o después de incidentes conocidos (ej: niebla escarlata), en caso de que sea antes o después de un incidente tener la opción de si podrían continuar los incidentes en la aventura o no (ej: siempre antes o después de X incidente sin pasar al siguiente incidente conocido nunca o... tener la chance)
+*
+*
+Encarnar Npcs:
+Opción de ser un npc conocido en vez de un humano outsider, por ejemplo: ser Reimu
+*
+
+
+*
+Extras:
+Mejorar la experiencia con pequeños, detalles, hacerlo bonito.
+Pequeñas mejoras viables y realistas.
+Hacer pruebas generales.
+Crear un trailer.
+Publicidad...
+*
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

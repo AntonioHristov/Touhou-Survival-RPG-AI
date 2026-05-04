@@ -1,0 +1,1395 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Touhou Survival Interface</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --accent: #ff4757;
+            --text: #e0e0e0;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            margin: 0;
+        }
+
+        /* Navegación */
+        nav {
+            background: #000;
+            padding: 10px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .nav-btn.active {
+            background: var(--accent);
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 800px;
+            margin: auto;
+        }
+
+        .section {
+            display: none;
+        }
+
+        /* Ocultas por defecto */
+        .section.active {
+            display: block;
+        }
+
+        /* Solo se ve la activa */
+
+        .char-selector {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        select {
+            padding: 10px;
+            background: #333;
+            color: white;
+            border: 1px solid var(--accent);
+            border-radius: 5px;
+        }
+
+        .data-box {
+            background: var(--card);
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid var(--accent);
+            margin-bottom: 10px;
+        }
+
+        pre {
+            white-space: pre-wrap;
+            font-size: 0.9em;
+            color: #88ff88;
+        }
+
+        .char-selector .nav-btn {
+            vertical-align: middle;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        .char-selector .nav-btn:active {
+            transform: scale(0.95);
+        }
+
+        .item-card button {
+            margin-left: 2px;
+            opacity: 0.8;
+            transition: opacity 0.2s;
+        }
+
+        .item-card button:hover {
+            opacity: 1;
+            transform: scale(1.05);
+        }
+
+        /* Asegura que cada fila de objeto sea un contenedor flexible alineado */
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            /* Alinea los botones al tope del texto */
+            gap: 15px;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* El contenedor de texto ocupa todo el espacio sobrante */
+        .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        /* Contenedor de botones fijo a la derecha */
+        .item-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+            /* Impide que los botones se encojan */
+            white-space: nowrap;
+            /* Evita que los botones se pongan uno debajo de otro */
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-size: 0.75em;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-sm:hover {
+            filter: brightness(1.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <nav id="mainNav" style="display: none;">
+        <button class="nav-btn active" onclick="showSection('sec-all')">Ver Todo</button>
+        <button class="nav-btn" onclick="showSection('sec-stats')">Atributos</button>
+        <button class="nav-btn" onclick="showSection('sec-inv')">Inventario</button>
+        <button class="nav-btn" onclick="showSection('sec-extra')">Recuerdos y Extras</button>
+        <button class="nav-btn" onclick="showSection('sec-world')">Estado Mundo</button>
+        <button class="nav-btn" onclick="showSection('sec-prompt')">Elegir Acción/Copiar Prompt</button>
+    </nav>
+
+    <div class="container">
+        <div class="char-selector" id="setup">
+            <h1>Cargar Datos de Partida</h1>
+            <input type="file" id="jsonInput" accept=".json">
+            <div id="charPickerContainer" style="display:none; margin-top: 20px;">
+                <label>Seleccionar Personaje: </label>
+                <select id="charSelect" onchange="updateUI()"></select>
+                <button class="nav-btn" onclick="selectActivePlayer()"
+                    style="background: var(--accent); margin-left: 10px; padding: 5px 10px; font-size: 0.8em;">
+                    🎯 Ir al turno actual
+                </button>
+            </div>
+        </div>
+
+        <div id="sec-all" class="section active">
+            <h2>📋 Todo</h2>
+            <div id="allContent"></div>
+        </div>
+
+        <div id="sec-stats" class="section">
+            <h2>📊 Atributos Principales</h2>
+            <div id="statsContent"></div>
+        </div>
+
+        <div id="sec-inv" class="section">
+            <h2>🎒 Inventario Completo</h2>
+            <div id="invContent"></div>
+        </div>
+
+        <div id="sec-extra" class="section">
+            <h2>✨ Recuerdos y Extras</h2>
+            <div id="extraContent"></div>
+        </div>
+
+        <div id="sec-world" class="section">
+            <h2>🌍 Estado del Mundo</h2>
+            <div id="worldContent"></div>
+        </div>
+
+        <div id="sec-prompt" class="section">
+            <h2>🤖 Prompt de Continuación</h2>
+            <div class="data-box" id="promptContent">
+                <p style="font-size: 0.8em; color: #aaa;">Copia el siguiente texto para dárselo a la IA y retomar la
+                    historia:</p>
+                <textarea id="promptTextArea"
+                    style="width: 100%; height: 300px; background: #000; color: #00ff00; border: 1px solid #444; padding: 10px; font-family: monospace;"></textarea>
+                <br><br>
+                <button class="nav-btn" onclick="copyPrompt()">Copiar al Portapapeles</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let gameData = null;
+
+        document.getElementById('jsonInput').addEventListener('change', function (e) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                gameData = JSON.parse(event.target.result);
+                initGame();
+            };
+            reader.readAsText(e.target.files[0]);
+        });
+
+        function initGame() {
+            const select = document.getElementById('charSelect');
+            const chars = gameData.dynamicData.chars;
+            // Obtenemos el ID del jugador al que le toca el turno
+            const turnId = gameData.dynamicData.worldState.turnActionPlayer_id;
+
+            select.innerHTML = '';
+            Object.keys(chars).forEach(id => {
+                if (id !== 'id_tplMANDATORY') {
+                    let opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = id;
+
+                    // SI el ID coincide con el del turno, lo marcamos como seleccionado
+                    if (id === turnId) {
+                        opt.selected = true;
+                    }
+
+                    select.appendChild(opt);
+                }
+            });
+
+            document.getElementById('charPickerContainer').style.display = 'block';
+            document.getElementById('mainNav').style.display = 'flex';
+
+            // Al terminar de llenar el select, actualizamos la interfaz
+            updateUI();
+        }
+
+        function showSection(sectionId) {
+            // Cambiar visibilidad
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            document.getElementById(sectionId).classList.add('active');
+
+            // Cambiar estado de botones
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        function getActiveContext() {
+            const data = gameData.dynamicData;
+            const activeId = data.worldState.turnActionPlayer_id;
+            const player = data.chars[activeId];
+
+            // Obtenemos el área y mini-área directamente del jugador
+            const areaId = player.currentArea_id;
+            const miniId = player.currentMiniArea_id;
+
+            return {
+                player: player,
+                areaId: areaId,
+                miniId: miniId,
+                localItems: data.worldStorage[areaId].miniAreas[miniId] || []
+            };
+        }
+
+        function updateUI() {
+            if (!gameData) return;
+
+            // 1. Referencias Globales
+            const data = gameData.dynamicData;
+            const world = data.worldState;
+            const turnId = world.turnActionPlayer_id;
+            const selectedId = document.getElementById('charSelect').value;
+            const char = data.chars[selectedId];
+            const allChars = data.chars;
+            const storage = data.worldStorage;
+            const lostFound = storage["SYSTEM_LOST_FOUND"];
+            const limboRef = lostFound.miniAreas.Contenedor_Global;
+
+            // --- SECCIÓN MUNDO (SIEMPRE VISIBLE) ---
+            let limboHtml = "";
+
+            if (lostFound && lostFound.miniAreas.Contenedor_Global.length > 0) {
+                limboHtml = `
+    <div class="data-box" style="border-left: 4px solid #9b59b6; background: #251b2d; margin-top:15px;">
+        <h3 style="color:#9b59b6">🌌 Limbo Global</h3>
+        ${detallar(limboRef, true, 'LIMBO', null, limboRef)} 
+    </div>
+`;
+            }
+            document.getElementById('worldContent').innerHTML = `
+        <div class="data-box" style="border-left-color: #f1c40f;">
+            <h3>Escenario Global</h3>
+            <p><strong>Dificultad:</strong> <span style="color:#ff4757">${world.currDiff}</span></p>
+            <p><strong>Tiempo:</strong> Día ${world.time.day}, ${world.time.h}hs</p>
+            <p><strong>Idioma:</strong> ${world.gameLang}</p>
+            <p><strong>Turno actual:</strong> <span class="badge">${world.turnActionPlayer_id}</span></p>
+        </div>
+        ${limboHtml}`;
+
+            // --- PROCESAR DATOS DE UBICACIÓN (NUEVA ESTRUCTURA) ---
+            const areaId = char.currentArea_id;
+            const miniId = char.currentMiniArea_id;
+            const areaData = storage[areaId] || {};
+            const localItems = (areaData.miniAreas && areaData.miniAreas[miniId]) ? areaData.miniAreas[miniId] : [];
+            const infoClima = areaData.weather || "No definido";
+
+            const htmlStats = `
+        <div class="data-box">
+            <h3>📊 Ficha: ID: ${selectedId} | Apodo: ${char.nick} | Edad: ${char.age} | Género: ${char.fem ? '♀' : '♂'} | Omnipotente: ${char.omnipotent ? 'Si' : 'No'} | Contador Esporas Bosque mágico: ${char.magicForestToxin_h} | Estado: ${char.state}</h3>
+            <p>📍 <strong>${areaId}</strong> > <strong>${miniId}</strong> | ☁️ <strong>${infoClima}</strong></p>
+            <hr>
+            <div class="stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <p>Comida: ${char.food[0]}/${char.food[1]}</p>
+                <p>Agua: ${char.water[0]}/${char.water[1]}</p>
+                <p>Dormir: ${char.sleep[0]}/${char.sleep[1]}</p>
+                <p>HP: ${char.hp[0]}/${char.hp[1]}</p>
+                <p>Energía: ${char.energy[0]}/${char.energy[1]}</p>
+                <p>Daño Mágico: ${char.magDmg[0]}/${char.magDmg[1]}</p>
+                <p>Defensa Mágica: ${char.magDef[0]}/${char.magDef[1]}</p>
+                <p>Velocidad Volar: ${char.flySpd[0]}/${char.flySpd[1]}</p>
+                <p>Daño Físico: ${char.physDmg[0]}/${char.physDmg[1]}</p>
+                <p>Defensa Física: ${char.physDef[0]}/${char.physDef[1]}</p>
+                <p>Velocidad Correr: ${char.runSpd[0]}/${char.runSpd[1]}</p>
+                <p>Reflejos: ${char.refl[0]}/${char.refl[1]}</p>
+                </div>
+        </div>
+    `;
+
+            // Visualización de Inventario + Objetos en el Suelo
+            const htmlInv = `
+        <div class="data-box" style="border-left-color: #3498db;">
+            <h3>🎒 Inventario Personal</h3>
+            ${detallar(char.inv, true, "", null)}
+        </div>
+        <div class="data-box" style="border-left-color: #2ecc71;">
+            <h3>📦 Objetos en el área (${miniId})</h3>
+            ${localItems.length > 0 ? detallar(localItems, false, "", null) : "<p style='color:#666'>No hay nada en el suelo.</p>"}
+        </div>
+    `;
+
+            const htmlExtra = `
+        <div class="data-box">
+            <h3>✨ Memorias</h3>
+            ${detallar(char.memories, false, "", null)}
+            <hr>
+            <h3>✨ Habilidades</h3>
+            ${detallar(char.skills, false, "", null)}
+            <hr>
+            <h3>✨ Efectos Activos</h3>
+            ${detallar(char.activeEffects, false, "", null)}
+            <hr>
+            <h3>✨ Personajes Detectados Cerca</h3>
+            ${detallar(char.detectedCharsNearbyList, false, "", null)}
+            <hr>
+            <h3>✨ Algo extra...</h3>
+            ${detallar(char.extra, false, "", null)}
+        </div>
+    `;
+
+            // --- LÓGICA DEL PROMPT (CON FILTRADO GEOGRÁFICO) ---
+            const promptSection = document.getElementById('sec-prompt');
+            const container = promptSection.querySelector('.data-box');
+
+            if (selectedId !== turnId) {
+                // BLOQUEO: Si el seleccionado no es el del turno actual
+                container.innerHTML = `
+                    <div style="text-align:center; padding: 20px; opacity: 0.8;">
+                        <h3 style="color:var(--accent);">🔒 Control Desactivado</h3>
+                        <p>Estás viendo a <b>${char.nick}</b>, pero es el turno de actuar de <b>${world.turnActionPlayer_id}</b>.</p>
+                        <p style="font-size:0.9em; color:#888;">Cambia al personaje del turno para elegir acciones o generar el prompt.</p>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = `<h3>Última Narración</h3>
+            <p style="font-style: italic; color: #bbb;">"${world.lastNarration.text}"</p>
+            <strong>Opciones disponibles:</strong>
+            <ul>${world.lastNarration.options.map(o => `<li>${o}</li>`).join('')}</ul>`;
+
+                if (!world.lastNarration.OptChosen) {
+                    // MODO: Elegir acción (igual que antes)
+                    container.innerHTML += `
+            <h3>🤔 ¿Qué vas a hacer? (Sugerencias opcionales)</h3>
+            <ul style="font-size: 0.85em; color: #ff4757; cursor: pointer;">
+                ${world.lastNarration.options.map(o => `<li onclick="setOption('${o}')">${o}</li>`).join('')}
+            </ul>
+            <textarea id="customOpt" placeholder="Acción personalizada..." style="width:100%; height:60px; background:#222; color:#fff; padding:10px;"></textarea>
+            <button class="nav-btn" onclick="confirmAction()">Confirmar Acción</button>
+            <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Exportar JSON</button>`;
+                } else {
+                    renderGeneratedPrompt(container, char, world, data, turnId);
+                }
+            }
+
+            // Inyectar datos
+            document.getElementById('statsContent').innerHTML = htmlStats;
+            document.getElementById('invContent').innerHTML = htmlInv;
+            document.getElementById('extraContent').innerHTML = htmlExtra;
+            // --- RENDERIZADO FINAL DE "VER TODO" ---
+            document.getElementById('allContent').innerHTML = `
+                <h2 style="color:var(--accent); border-bottom: 1px solid #333; padding-bottom: 5px;">📊 Atributos Principales</h2>
+                ${htmlStats}
+
+                <h2 style="color:#3498db; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top:30px;">🎒 Inventario Completo</h2>
+                ${htmlInv}
+
+                <h2 style="color:#9b59b6; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top:30px;">✨ Recuerdos y Extras</h2>
+                ${htmlExtra}
+
+                <div style="margin-top:40px;">
+                    <h2 style="color:#f1c40f; border-bottom: 2px solid #f1c40f; padding-bottom: 5px;">🌍 Estado del Mundo</h2>
+                    ${document.getElementById('worldContent').innerHTML}
+                </div>
+
+                <div style="margin-top:40px;">
+                    <h2 style="color:var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 5px;">🤖 Acción y Prompt</h2>
+                    <div class="data-box" style="border-left-color: var(--accent); margin-top:10px;">
+                        ${container.innerHTML}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Función para el botón de copiar
+        function copyPrompt() {
+            const textArea = document.getElementById('promptTextArea');
+            textArea.select();
+            document.execCommand('copy');
+            alert("¡Prompt copiado al portapapeles!");
+        }
+
+        function detallar(dato, esInventario = false, contextoEspecial = "", idPadre = null, arrayContenedor = null, index = -1) {
+            if (dato === null || typeof dato !== 'object') return `<span>${dato}</span>`;
+
+            // SI ES UN ARRAY: Iteramos y pasamos la referencia del array y el índice a los hijos
+            if (Array.isArray(dato)) {
+                return dato.map((item, idx) => `
+            <div class="item-card">
+                ${detallar(item, esInventario, contextoEspecial, idPadre, dato, idx)}
+            </div>`).join("");
+            }
+
+            let atributos = "";
+            let buttonsHtml = "";
+            const currentIdObj = dato.idObj;
+
+            // LÓGICA DE FLECHAS (Solo si hay un array válido y más de un elemento)
+            if (arrayContenedor && arrayContenedor.length > 1 && index !== -1) {
+                const canUp = index > 0;
+                const canDown = index < arrayContenedor.length - 1;
+
+                // Serializamos el array para pasarlo de forma segura en el onclick
+                const arrayStr = encodeURIComponent(JSON.stringify(arrayContenedor));
+
+                buttonsHtml += `
+            <button class="btn-sm" style="background:#636e72; opacity:${canUp ? 1 : 0.3}" 
+                    onclick="moverPosicionDirecta('${arrayStr}', ${index}, -1)" 
+                    ${!canUp ? 'disabled' : ''}>▲</button>
+            <button class="btn-sm" style="background:#636e72; opacity:${canDown ? 1 : 0.3}" 
+                    onclick="moverPosicionDirecta('${arrayStr}', ${index}, 1)" 
+                    ${!canDown ? 'disabled' : ''}>▼</button>
+        `;
+            }
+
+            // 1. Renderizar el ID del objeto de forma destacada
+            // Buscamos el ID del objeto para el botón
+            // --- LÓGICA DE BOTONES ---
+            if (currentIdObj !== undefined) {
+                if (contextoEspecial !== 'LIMBO') {
+                    // Si el objeto NO está en el inventario (está en el suelo), mostrar botón Recoger
+                    if (!esInventario) {
+                        buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recoger" 
+                            onclick="recogerObjeto(${currentIdObj})">📥 Recoger</button> `;
+                    }
+                    // Si el objeto ESTÁ en el inventario, mostrar botón Soltar
+                    else if (esInventario && idPadre === null) {
+                        // idPadre === null asegura que no soltamos algo que está DENTRO de una mochila directamente al suelo
+                        buttonsHtml += `<button class="btn-sm" style="background:#e74c3c" title="Soltar" 
+                            onclick="soltarObjeto(${currentIdObj})">📤 Soltar</button> `;
+                    }
+
+                    // Tus botones existentes de "Mover a contenedor" y "Limbo"
+                    buttonsHtml += `<button class="btn-sm" style="background:#3498db" onclick="abrirSelectorContenedores(${currentIdObj})">📦 In</button> `;
+                }
+                // BOTÓN SACAR (Solo si tiene un padre y no estamos en el Limbo)
+                if (idPadre !== null && contextoEspecial !== 'LIMBO') {
+                    buttonsHtml += `<button class="btn-sm" style="background:#e67e22" title="Sacar al exterior" 
+                            onclick="moveFromContainer(${currentIdObj}, ${idPadre})">📦 Out</button>`;
+                }
+                if (contextoEspecial === 'LIMBO') {
+                    // Botón verde para recuperar
+                    buttonsHtml += `<button class="btn-sm" style="background:#27ae60" onclick="toggleLimbo(${currentIdObj}, 'LIMBO')">🔄 Recuperar</button>`;
+                } else {
+                    // Botón púrpura para enviar al Limbo
+                    buttonsHtml += `<button class="btn-sm" style="background:#9b59b6" onclick="toggleLimbo(${currentIdObj})">🌌 Limbo</button>`;
+                }
+
+                // Tu botón de eliminar de siempre
+                buttonsHtml += `<button class="btn-sm" onclick="eliminarObjeto(${currentIdObj})">🗑️</button>`;
+            }
+
+            // --- PROCESAR ATRIBUTOS ---
+            for (const [k, v] of Object.entries(dato)) {
+                if (k === 'idObj') {
+                    atributos = `<div style="color:#f1c40f; font-weight:bold; font-size:0.9em;">#ID: ${v}</div>` + atributos;
+                    continue;
+                }
+                if (v === null || k === 'inLimbo') continue;
+
+                // Caso especial: Metadatos del Limbo
+                if (k === 'last_seen' && typeof v === 'object') {
+                    atributos += `<div style="color:#9b59b6; font-size:0.85em;">📍 Visto en: ${v.area} > ${v.miniArea}</div>`;
+                }
+                // Caso especial: Inventarios o sub-objetos (Recursivo)
+                else if (k === 'items' || k === 'content' || k === 'inv' || (Array.isArray(v) && k !== 'detectedCharsNearbyList')) {
+                    const contenedorActualID = dato.idObj || idPadre;
+                    atributos += `<div class="inventory-box" style="margin-top:5px;">
+                <strong style="color:var(--accent)">${k}:</strong> 
+                ${detallar(v, true, contextoEspecial, contenedorActualID, v, -1)}
+            </div>`;
+                } else {
+                    // No mostrar arrays de skills o memorias de forma cruda si ya se detallan fuera
+                    atributos += `<div><strong>${k}:</strong> ${JSON.stringify(v)}</div>`;
+                }
+            }
+
+            return `
+    <div class="item-row" style="border-bottom: 1px solid #333; padding: 5px 0;">
+        <div class="item-info">${atributos}</div>
+        <div class="item-actions">${buttonsHtml}</div>
+    </div>`;
+        }
+
+        // Escribe una de las sugerencias en el textarea
+        function setOption(texto) {
+            document.getElementById('customOpt').value = texto;
+        }
+
+        // Guarda la opción en el objeto gameData y refresca la UI
+        function confirmAction() {
+            // Buscamos el valor en el textarea (puede haber más de uno ahora, así que pillamos el que tenga texto)
+            const textareas = document.querySelectorAll('#customOpt');
+            let val = "";
+            textareas.forEach(t => { if (t.value) val = t.value; });
+
+            if (!val) {
+                alert("Por favor, escribe o selecciona una acción primero.");
+                return;
+            }
+
+            gameData.dynamicData.worldState.lastNarration.OptChosen = val;
+            updateUI();
+
+            // Opcional: Volver arriba o cambiar de pestaña automáticamente
+            // showSection('sec-all'); 
+        }
+
+        // Borra la opción elegida para poder escribir otra
+        function resetOption() {
+            gameData.dynamicData.worldState.lastNarration.OptChosen = "";
+            updateUI();
+        }
+
+        function exportJSON() {
+            if (!gameData) return;
+
+            const world = gameData.dynamicData.worldState;
+            const turn = String(world.turnActionPlayer_id);
+            const loc = gameData.dynamicData.chars[world.turnActionPlayer_id].currentArea_id || "Gensokyo";
+            const day = world.time.day;
+            const hour = world.time.h.replace(':', 'M'); // Quitamos los dos puntos para evitar problemas en nombres de archivo;
+            //Formato: EIndex_idpN_idArea_Day_Hour.json
+            const fileName = `EIndex_${turn}_${loc}_D${day}_H${hour}.json`;
+
+            const dataStr = JSON.stringify(gameData, null, 4);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+
+            link.href = url;
+            link.download = fileName;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generateMultiprompt(context, maxCharsPerPart = 30000) {
+            // 1. Intentamos generar el prompt completo primero para medirlo
+            const engineRules = context.engineRules;
+            const filteredData = context.dynamicData;
+            const action = context.action;
+            const instructions = `1. Actúa como Master atmosférico. Lenguaje inmersivo pero sencillo. Cantidad de opciones sugeridas según el contexto, preferible 3.
+2. Si un valor es 'null' (ej. weather), defínelo según contexto.
+3. Actualiza 'turnActionPlayer_id' secuencialmente tras cada acción. Aplica 'worldMechanics' en general solo cuando sea el turno del último jugador en la lista.
+4. 'lastNarration.text' debe contener exactamente el mismo texto que me narres en el chat. No resumas, no omitas detalles atmosféricos ni pistas sensoriales. El JSON debe ser un espejo fiel de la historia.
+5. Para objetos nuevos usa el primer ID de 'reusableObjIds' y quítalo de la lista. Si está vacía, usa 'lastGeneratedObjId' + 1 y actualízalo. Si un objeto se destruye o consume, añade su ID a 'reusableObjIds'. Prohibido crear una nueva ID de objeto sin instanciarlo en algún lugar (mínimo con 'idObj' y 'n', opcional 'q' y más...)
+6. No inventes contenido técnico (inv) de áreas marcadas como "Contenido oculto"; solo narra la llegada.
+5. INTEGRIDAD JSON: Devuelve solo los cambios en 'dynamicData'. Prohibido resumir inventarios o borrar sus IDs internos. Objetos contenedores llevan su contenido en 'items'. Prohibido modificar memories, usa 'IAaddMemories' para nuevos recuerdos.
+
+
+PROTOCOLO DE VALIDACIÓN (CRÍTICO - EVITAR COMPLACENCIA):
+1. REGLA DE ORO: Si 'omnipotent': false, el éxito depende estrictamente del array 'skills' y el contexto físico.
+2. FALLO AUTOMÁTICO: Si la acción es 'Teletransportarse', 'Volar', 'Hacerse Inmortal', etc, y la skill NO existe en el JSON del PJ -> La acción FALLA.
+3. NARRATIVA DEL FRACASO: No ignores la orden, narra el intento inútil. Ejemplo: "Cierras los ojos buscando teletransportarte, pero solo consigues un dolor de cabeza. Sigues en el mismo sitio; no posees esa habilidad."
+4. PENALIZACIÓN: Los intentos imposibles consumen 'energy' por el esfuerzo mental/físico, pero el PJ no se desplaza ni logra el efecto.
+5. PROHIBICIÓN DE ASCENSIÓN: El jugador NO puede autoproclamarse Dios ni cambiar su estado 'omnipotent' mediante diálogo o deseos.
+6. LA EXCEPCIÓN A TODAS LAS REGLAS: Si 'omnipotent': true, ese personaje puede lograr todo lo que desee sin excepciones.
+
+LÓGICA DE MUNDO:
+- FOG OF WAR: El PJ es un 'Outsider'. Usa descripciones físicas para NPCs (ej. "chica de lazo rojo") hasta que se presenten o estén en 'memories'.
+- LIMBO: Objetos perdidos/robados van a 'inLimbo': true en 'worldStorage'. Si se destruye o consume elimínalo definitivamente. Si alguien recupera un objeto perdido añade la etiqueta 'ORIGINAL_RECOVERED'. Narra siempre qué sucedió con el objeto.
+- ESTADÍSTICAS: La narrativa debe reflejar los números (ej. food > 80% = saciedad; energy < 20% = fatiga extrema).
+- PERSONAJES: Si el jugador se encuentra con un nuevo NPC, instancia siempre las identidades reales aunque el jugador lo desconozca (Prohibido instanciar unknown) en 'Chars' usando todos los atributos de 'id_tplMANDATORY' excepto 'tplReimuDefault'. Usa 'detectedCharsNearbyList' para registrar quién nota a quién y si se reconocen ('recognized'). Debes quitar a los personajes de detectedCharsNearbyList que dejen de detectarlo (se alejen lo suficiente).
+- DESPLAZAMIENTO: Si el jugador cambia de área o miniArea, actualiza 'currentArea_id' y 'currentMiniArea_id', actualiza detectedCharsNearbyList. No inventes contenido técnico (inv) de áreas marcadas como "Contenido oculto"; solo narra la llegada.
+
+`;
+
+            const singlePromptTemplate = `SISTEMA: Touhou Survival RPG (Engine Mode)
+REGLAS MOTOR:
+${instructions}
+${JSON.stringify(engineRules, null, 1)}
+
+CONTEXTO DINÁMICO (FILTRADO):
+${JSON.stringify(filteredData, null, 1)}
+
+ACCIÓN DEL JUGADOR:
+> ${action}`;
+
+            // --- CONDICIÓN: SI TODO CABE EN UNA PARTE ---
+            if (singlePromptTemplate.length < maxCharsPerPart) {
+                return [{
+                    title: "PROMPT COMPLETO",
+                    content: singlePromptTemplate,
+                    instruction: "" // No necesita instrucción extra, ya va en el template
+                }];
+            }
+
+            // --- CONDICIÓN: FRAGMENTACIÓN (Multiparte) ---
+            const prompts = [];
+            const charIds = Object.keys(filteredData.chars);
+
+            // Parte 1: Reglas + Mundo (Sin personajes detallados)
+            const dataWithoutChars = JSON.parse(JSON.stringify(filteredData));
+            dataWithoutChars.chars = {};
+
+            const parte1Content = `SISTEMA: Touhou Survival RPG (Parte 1)\nREGLAS MOTOR:\n${JSON.stringify(engineRules, null, 1)}\n\nESTADO MUNDO:\n${JSON.stringify(dataWithoutChars, null, 1)}\n\n${aditionalInstructions}`;
+
+            let batches = [];
+            let currentBatch = {};
+            let currentBatchSize = 0;
+
+            charIds.forEach(id => {
+                const charData = filteredData.chars[id];
+                const charSize = JSON.stringify(charData).length;
+                if (currentBatchSize + charSize > maxCharsPerPart && Object.keys(currentBatch).length > 0) {
+                    batches.push(currentBatch);
+                    currentBatch = {};
+                    currentBatchSize = 0;
+                }
+                currentBatch[id] = charData;
+                currentBatchSize += charSize;
+            });
+            if (Object.keys(currentBatch).length > 0) batches.push(currentBatch);
+
+            const totalParts = 1 + batches.length;
+
+            prompts.push({
+                title: "PARTE 1",
+                content: parte1Content,
+                instruction: `FRAGMENTO 1 de ${totalParts}. Responde solo: "SISTEMA_OK".`
+            });
+
+            batches.forEach((batch, index) => {
+                const partNum = index + 2;
+                const isLast = (partNum === totalParts);
+                prompts.push({
+                    title: `PARTE ${partNum}`,
+                    content: `PERSONAJES (BLOQUE ${index + 1}):\n${JSON.stringify({ chars: batch }, null, 1)}` +
+                        (isLast ? `\n\nACCIÓN JUGADOR: > "${action}"\n\nPROCESA AHORA.` : ""),
+                    instruction: isLast
+                        ? `ÚLTIMO FRAGMENTO (${partNum}/${totalParts}).`
+                        : `FRAGMENTO ${partNum} de ${totalParts}. Responde solo: "DATOS_OK".`
+                });
+            });
+
+            return prompts;
+        }
+
+        function renderPromptUI(prompts) {
+            const container = document.getElementById('prompt-area'); // Tu div de visualización
+            container.innerHTML = ""; // Limpiar
+
+            prompts.forEach((p, index) => {
+                const btn = document.createElement('button');
+                btn.innerText = `Copiar ${p.title}`;
+                btn.onclick = () => {
+                    const finalText = `${p.instruction}\n\n${p.content}`;
+                    navigator.clipboard.writeText(finalText);
+                    btn.style.background = "#4CAF50"; // Feedback de copiado
+                    btn.innerText = "¡Copiado!";
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function copySpecificPrompt(base64Data, btn) {
+            const decoded = decodeURIComponent(escape(atob(base64Data)));
+            const textArea = document.getElementById('promptTextArea');
+            textArea.value = decoded;
+            textArea.select();
+            document.execCommand('copy');
+
+            // Feedback visual
+            const originalText = btn.innerText;
+            btn.innerText = "¡Copiado! ✓";
+            btn.style.background = "#27ae60";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.background = originalText.includes("PARTE 1") ? "#ff4757" : "#444";
+            }, 2000);
+        }
+
+        function renderGeneratedPrompt(container, char, world, data, turnId) {
+            // 1. Clonamos los datos para no romper el original al filtrar
+            const filteredData = JSON.parse(JSON.stringify(data));
+            const areaIdTarget = char.currentArea_id;
+            const miniIdTarget = char.currentMiniArea_id;
+
+            // Función auxiliar para procesar el estado de la miniArea
+            const obtenerResumenMiniArea = (contenido, esMismaArea) => {
+                // Si no es un array o está totalmente vacío
+                if (!Array.isArray(contenido) || contenido.length === 0) {
+                    return "Vacia (Contenido Editable)";
+                }
+
+                // --- LÓGICA RECURSIVA PARA IDS ---
+                const extraerTodosLosIds = (lista) => {
+                    let idsEncontrados = [];
+                    lista.forEach(obj => {
+                        if (obj && typeof obj === 'object') {
+                            if (obj.idObj !== undefined) {
+                                idsEncontrados.push(obj.idObj);
+                            }
+                            // Si el objeto tiene un inventario interno (items, content o inv), buscamos dentro
+                            const subContenido = obj.items || obj.content || obj.inv;
+                            if (Array.isArray(subContenido)) {
+                                idsEncontrados = idsEncontrados.concat(extraerTodosLosIds(subContenido));
+                            }
+                        }
+                    });
+                    return idsEncontrados;
+                };
+
+                const ids = extraerTodosLosIds(contenido);
+                const prefijo = "(Contenido oculto)";
+
+                if (ids.length > 0) {
+                    // Ahora mostrará: (Contenido oculto) (Contiene IDs: 1, 3, 4, 5, 6, 7, 2)
+                    return `${prefijo} (Contiene IDs: ${ids.join(", ")})`;
+                } else {
+                    return `${prefijo} (No vacía, sin objetos con ID)`;
+                }
+            };
+
+            // 2. Limpieza del worldStorage (Filtro geográfico)
+            Object.keys(filteredData.worldStorage).forEach(aId => {
+                if (aId === "SYSTEM_LOST_FOUND") {
+                    delete filteredData.worldStorage[aId];
+                    return;
+                }
+
+                const area = filteredData.worldStorage[aId];
+
+                if (aId.trim() === areaIdTarget.trim()) {
+                    // ÁREA ACTUAL: Procesamos miniáreas donde NO está el jugador
+                    if (area.miniAreas) {
+                        Object.keys(area.miniAreas).forEach(mId => {
+                            if (mId.trim() !== miniIdTarget.trim()) {
+                                area.miniAreas[mId] = obtenerResumenMiniArea(area.miniAreas[mId], true);
+                            }
+                        });
+                    }
+                } else {
+                    // ÁREAS DISTANTES: Resumen total
+                    if (area.miniAreas) {
+                        const resumenArea = { note: "Distinta Area", miniAreas: {} };
+                        Object.keys(area.miniAreas).forEach(mId => {
+                            resumenArea.miniAreas[mId] = obtenerResumenMiniArea(area.miniAreas[mId], false);
+                        });
+                        filteredData.worldStorage[aId] = resumenArea;
+                    }
+                }
+            });
+
+            // === FILTRO DE VISIBILIDAD (Solo para NPCs) ===
+
+            const allDetectedIds = new Set();
+            Object.values(filteredData.chars).forEach(pj => {
+                if (pj.isPlayer && pj.detectedCharsNearbyList) {
+                    pj.detectedCharsNearbyList.forEach(detected => {
+                        allDetectedIds.add(String(detected.nearby_pj_id));
+                    });
+                }
+            });
+
+            Object.keys(filteredData.chars).forEach(id => {
+                const pj = filteredData.chars[id];
+
+                // CONDICIÓN: 
+                // 1. No es el personaje del turno actual
+                // 2. NO es un jugador (isPlayer no es true)
+                // 3. Nadie lo está detectando
+                if (id !== String(turnId) && !pj.isPlayer && !allDetectedIds.has(String(id))) {
+
+                    const mensajeOculto = "(OCULTO: última vez visto en su ubicación registrada)";
+
+                    if (pj.state) {
+                        pj.state = `${mensajeOculto} ${pj.state}`;
+                    } else {
+                        pj.state = mensajeOculto;
+                    }
+                }
+            });
+
+            // 3. Empaquetado de reglas para la IA
+            const engineRules = {
+                /*
+                variableNotes: {
+                    note_turnActionPlayer_id: "turnActionPlayer_id holds the id_pj of the player whose turn it is to act",
+                    note_time: "Default starts day:1, h: '06:00'. WorldMechanics apply only when the last created player chooses their action",
+                    note_omnipotent: "true = narrative omnipotence; false = DO NOT allow impossible actions (fail if attempted)!!!",
+                    Note_activeEffects: "Effects may have a 'delay_to_start' (e.g., 45min for Paracetamol)"
+                },*/
+                difficultyIntention: gameData.possibleDifficulties[world.currDiff],
+                engineConfig: gameData.engineConfig,
+                worldMechanics: gameData.worldMechanics
+            };
+
+            // 4. Generación de los Prompts (usando tu lógica de multiprompt)
+            const fullContext = {
+                engineRules: engineRules,
+                dynamicData: filteredData,
+                action: world.lastNarration.OptChosen
+            };
+
+            const allPrompts = generateMultiprompt(fullContext, 30000);
+
+            // 5. Renderizado de la interfaz de botones
+            let buttonsHtml = `<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">`;
+            allPrompts.forEach((p, idx) => {
+                const fullText = (p.instruction ? p.instruction + "\n\n" : "") + p.content;
+                const safeData = btoa(unescape(encodeURIComponent(fullText)));
+                buttonsHtml += `
+            <button class="nav-btn" style="background: ${allPrompts.length === 1 ? '#27ae60' : '#444'}" 
+                onclick="copySpecificPrompt('${safeData}', this)">
+                ${allPrompts.length === 1 ? 'Copiar Prompt Único' : 'Copiar ' + p.title}
+            </button>`;
+            });
+            buttonsHtml += `</div>`;
+
+            container.innerHTML = `
+        <h3>✅ Prompt para la IA</h3>
+        ${buttonsHtml}
+        <textarea id="promptTextArea" readonly placeholder="Haz clic en un botón para copiar..."
+            style="width: 100%; height: 200px; background: #000; color: #00ff00; border: 1px solid #444; padding: 10px; font-family: monospace;"></textarea>
+        <br><br>
+        <button class="nav-btn" style="background: #555;" onclick="resetOption()">Cambiar Acción</button>
+        <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Guardar Progreso (JSON)</button>
+    `;
+        }
+
+        function selectActivePlayer() {
+            if (!gameData) return;
+
+            // Obtenemos el ID del jugador que tiene el turno desde el estado del mundo
+            const turnId = gameData.dynamicData.worldState.turnActionPlayer_id;
+            const select = document.getElementById('charSelect');
+
+            // Cambiamos el valor del select al ID del turno
+            select.value = turnId;
+
+            // Forzamos la actualización de la interfaz para que se vea su ficha
+            updateUI();
+        }
+
+        function toggleLimbo(objId, currentPath = null) {
+            if (!gameData) return;
+            const root = gameData.dynamicData;
+            const limboArray = root.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global;
+            const sObjId = String(objId).trim();
+
+            if (currentPath === 'LIMBO') {
+                // --- ASISTENTE DE RECUPERACIÓN ---
+                const idx = limboArray.findIndex(o => o.idObj == sObjId);
+                if (idx === -1) return;
+
+                const obj = limboArray[idx];
+                const lastArea = obj.last_seen.area;
+                const lastMini = obj.last_seen.miniArea;
+
+                // Limpieza previa de flags
+                const limpiarObjeto = (o) => { delete o.inLimbo; delete o.last_seen; return o; };
+
+                // PREGUNTA AL USUARIO
+                const msg = `El objeto fue visto por última vez en: ${lastArea} (${lastMini}).\n\n` +
+                    `¿Dónde quieres devolverlo?\n` +
+                    `- Escribe 'S' para el SUELO (Área/MiniÁrea original)\n` +
+                    `- Escribe 'I' para el INVENTARIO de un personaje\n` +
+                    `- Cancela para no hacer nada.`;
+
+                const choice = prompt(msg, "S") ?.toUpperCase();
+
+                if (choice === 'S') {
+                    // Devolver al suelo original
+                    if (root.worldStorage[lastArea] && root.worldStorage[lastArea].miniAreas[lastMini]) {
+                        root.worldStorage[lastArea].miniAreas[lastMini].push(limpiarObjeto(obj));
+                        limboArray.splice(idx, 1);
+                        alert(`Devuelto al suelo en ${lastArea} > ${lastMini}`);
+                    } else {
+                        alert("Error: El área original ya no existe. Prueba enviarlo a un inventario.");
+                    }
+                }
+                else if (choice === 'I') {
+                    // Devolver a un inventario
+                    const pjId = prompt("Escribe el ID del personaje (ej: P1, Reimu...):", "P1");
+                    if (pjId && root.chars[pjId]) {
+                        root.chars[pjId].inv.push(limpiarObjeto(obj));
+                        limboArray.splice(idx, 1);
+                        alert(`Entregado a ${pjId}`);
+                    } else {
+                        alert("Personaje no encontrado.");
+                    }
+                }
+            } else {
+                // --- ENVIAR AL LIMBO ---
+                let foundObj = false;
+                let originalArea = "";
+                let originalMini = "";
+
+                // Función interna para buscar y extraer de cualquier array (recursivo)
+                const extractRecursive = (arr) => {
+                    const idx = arr.findIndex(o => String(o.idObj) === sObjId);
+                    if (idx !== -1) return arr.splice(idx, 1)[0];
+
+                    for (let obj of arr) {
+                        const sub = obj.items || obj.content || obj.inv;
+                        if (Array.isArray(sub)) {
+                            const res = extractRecursive(sub);
+                            if (res) return res;
+                        }
+                    }
+                    return null;
+                };
+
+                // Buscar en Inventarios
+                for (let pId in root.chars) {
+                    foundObj = extractRecursive(root.chars[pId].inv);
+                    if (foundObj) {
+                        originalArea = pId;
+                        originalMini = "Inventario (o contenedor interno)";
+                        break;
+                    }
+                    /*
+                    const inv = root.chars[pId].inv;
+                    const idx = inv.findIndex(o => o.idObj == objId);
+                    if (idx !== -1) {
+                        const obj = inv.splice(idx, 1)[0];
+                        obj.inLimbo = true;
+                        obj.last_seen = { area: pId, miniArea: "Inventario" };
+                        limboArray.push(obj);
+                        found = true; break;
+                    }*/
+                }
+
+                // Buscar en el Mundo (si no se encontró en inv)
+                if (!foundObj) {
+                    for (let aId in root.worldStorage) {
+                        if (aId === "SYSTEM_LOST_FOUND") continue;
+                        for (let mId in root.worldStorage[aId].miniAreas) {
+                            const mArea = root.worldStorage[aId].miniAreas[mId];
+                            if (Array.isArray(mArea)) {
+                                const idx = mArea.findIndex(o => o.idObj == objId);
+                                foundObj = extractRecursive(mArea);
+                                if (foundObj) {
+                                    originalArea = aId;
+                                    originalMini = mId;
+                                    break;
+                                }
+                                /*
+                                if (idx !== -1) {
+                                    const obj = mArea.splice(idx, 1)[0];
+                                    obj.inLimbo = true;
+                                    obj.last_seen = { area: aId, miniArea: mId };
+                                    limboArray.push(obj);
+                                    found = true; break;
+                                }*/
+                            }
+                        }
+                        if (foundObj) break;
+                    }
+                }
+                if (foundObj) {
+                    foundObj.inLimbo = true;
+                    foundObj.last_seen = { area: originalArea, miniArea: originalMini };
+                    limboArray.push(foundObj);
+                    alert(`Objeto [${foundObj.n}] extraído y enviado al Limbo.`);
+                } else {
+                    alert("No se pudo encontrar el objeto en ninguna ubicación conocida.");
+                }
+            }
+            updateUI(); // Refrescar la interfaz para ver los cambios
+        }
+
+        function moveFromContainer(objId, containerId) {
+            if (!gameData) return;
+            const root = gameData.dynamicData;
+            let foundContainer = null;
+            let parentRef = null;
+
+            // Buscar el contenedor (mochila/cofre) en personajes o mundo
+            // 1. En personajes
+            for (let pId in root.chars) {
+                const inv = root.chars[pId].inv;
+                const idx = inv.findIndex(o => o.idObj == containerId);
+                if (idx !== -1) { foundContainer = inv[idx]; parentRef = inv; break; }
+            }
+            // 2. En mundo
+            if (!foundContainer) {
+                for (let aId in root.worldStorage) {
+                    for (let mId in root.worldStorage[aId].miniAreas) {
+                        const mArea = root.worldStorage[aId].miniAreas[mId];
+                        if (Array.isArray(mArea)) {
+                            const idx = mArea.findIndex(o => o.idObj == containerId);
+                            if (idx !== -1) { foundContainer = mArea[idx]; parentRef = mArea; break; }
+                        }
+                    }
+                    if (foundContainer) break;
+                }
+            }
+
+            if (foundContainer && parentRef) {
+                const subInv = foundContainer.items || foundContainer.content || foundContainer.inv;
+                if (subInv) {
+                    const subIdx = subInv.findIndex(o => o.idObj == objId);
+                    if (subIdx !== -1) {
+                        const itemToMove = subInv.splice(subIdx, 1)[0];
+                        parentRef.push(itemToMove); // Sale al inventario del PJ o al suelo
+                        updateUI();
+                    }
+                }
+            }
+        }
+
+        function moveIntoContainer(objId, destId = null) {
+            if (!gameData) return;
+
+            // Si no viene destId (por si acaso se llama a la antigua), lo pedimos
+            if (!destId) {
+                destId = prompt("ID del contenedor destino:");
+                if (!destId) return;
+            }
+
+            // Convertimos ambos a String para comparar sin errores de tipo
+            const sObjId = String(objId).trim();
+            const sDestId = String(destId).trim();
+
+            // --- REGLA 1: IDENTIDAD ---
+            if (sObjId === sDestId) {
+                alert("🚨 ERROR: No puedes meter un objeto dentro de sí mismo.");
+                return;
+            }
+
+            const root = gameData.dynamicData;
+            let allSources = getAllSources(root);
+
+            // --- REGLA 2: BÚSQUEDA PREVIA (MIRAR SIN TOCAR) ---
+            const findDeep = (arr, id) => {
+                for (let obj of arr) {
+                    if (obj.idObj == id) return obj;
+                    const sub = obj.items || obj.content || obj.inv;
+                    if (Array.isArray(sub)) {
+                        const found = findDeep(sub, id);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            let itemToMove = null;
+            let targetContainer = null;
+
+            for (let src of allSources) {
+                if (!itemToMove) itemToMove = findDeep(src, objId);
+                if (!targetContainer) targetContainer = findDeep(src, destId);
+            }
+
+            // --- REGLA 3: VALIDACIONES DE INTEGRIDAD ---
+            if (!itemToMove || !targetContainer) {
+                alert("Error: No se encontró el origen o el destino.");
+                return;
+            }
+
+            // ¿El destino es capaz de recibir objetos?
+            const isDestValid = (targetContainer.items || targetContainer.content || targetContainer.inv);
+            if (!isDestValid) {
+                alert(`Error: [${targetContainer.n}] no tiene inventario. Solo puedes mover objetos a contenedores.`);
+                return;
+            }
+
+            // ¿Paradoja Espacial? (¿Está el destino dentro del objeto que voy a mover?)
+            const checkParadox = (parent, searchId) => {
+                const sub = parent.items || parent.content || parent.inv;
+                if (!sub || !Array.isArray(sub)) return false;
+                if (sub.some(o => String(o.idObj) === String(searchId))) return true;
+                return sub.some(o => checkParadox(o, searchId));
+            };
+
+            if (checkParadox(itemToMove, destId)) {
+                alert("🚨 PARADOJA: No puedes meter un contenedor dentro de algo que ya vive dentro de él.");
+                return;
+            }
+
+            // --- REGLA 4: EJECUCIÓN (SOLO SI LLEGAMOS AQUÍ ES 100% SEGURO) ---
+            const extractFromOriginal = (arr) => {
+                const idx = arr.findIndex(o => o.idObj == objId);
+                if (idx !== -1) return arr.splice(idx, 1)[0];
+                for (let obj of arr) {
+                    const sub = obj.items || obj.content || obj.inv;
+                    if (Array.isArray(sub)) {
+                        const found = extractFromOriginal(sub);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            // Extraemos
+            let finalItem = null;
+            for (let src of allSources) {
+                if (!finalItem) finalItem = extractFromOriginal(src);
+                if (finalItem) break;
+            }
+
+            if (finalItem) {
+                // Elegir la propiedad correcta (items > content > inv)
+                let key = 'items';
+                if (targetContainer.content) key = 'content';
+                else if (targetContainer.inv) key = 'inv';
+
+                if (!targetContainer[key]) targetContainer[key] = [];
+                targetContainer[key].push(finalItem);
+
+                alert(`📦 Éxito: [${finalItem.n}] movido a [${targetContainer.n}]`);
+            } else {
+                alert("Error crítico: El objeto desapareció durante la transacción. Recarga la página.");
+            }
+
+            updateUI();
+        }
+
+
+
+        // Asegúrate de tener esta función auxiliar también actualizada
+        function getAllSources(root) {
+            let sources = [];
+            if (root.chars) {
+                for (let p in root.chars) sources.push(root.chars[p].inv);
+            }
+            if (root.worldStorage) {
+                for (let a in root.worldStorage) {
+                    if (a === "SYSTEM_LOST_FOUND") continue;
+                    for (let m in root.worldStorage[a].miniAreas) {
+                        sources.push(root.worldStorage[a].miniAreas[m]);
+                    }
+                }
+            }
+            return sources;
+        }
+
+        function renderObject(obj) {
+            const isContainer = (obj.items || obj.content || obj.inv);
+
+            // Creamos el HTML del objeto
+            let html = `
+        <div class="item-card" style="border-left: 4px solid ${isContainer ? '#ff4757' : '#555'}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <strong>${obj.n}</strong>
+                <span style="font-size:0.8em; color:#888;">ID: ${obj.idObj}</span>
+            </div>
+            <p style="margin: 5px 0; font-size:0.9em;">${obj.d || 'Sin descripción'}</p>
+            
+            <div class="actions" style="margin-top:10px;">
+                <button onclick="editObject('${obj.idObj}')">Editar</button>
+                <button onclick="moveIntoContainer('${obj.idObj}')" style="background:#2f3542;">Mover a...</button>
+                <button onclick="deleteObject('${obj.idObj}')" style="background:#b33939;">Eliminar</button>
+            </div>
+    `;
+
+            // Si es contenedor, renderizamos su contenido de forma recursiva
+            if (isContainer) {
+                const subItems = obj.items || obj.content || obj.inv || [];
+                html += `<div class="sub-inventory" style="margin-left:20px; padding-left:10px; border-left:1px dashed #444;">`;
+                if (subItems.length === 0) {
+                    html += `<p style="color:#666; font-size:0.8em;">(Vacío)</p>`;
+                } else {
+                    subItems.forEach(sub => {
+                        html += renderObject(sub);
+                    });
+                }
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function recogerObjeto(objId) {
+            if (!gameData) return;
+            const data = gameData.dynamicData;
+            const char = data.chars[data.worldState.turnActionPlayer_id];
+            const miniAreaItems = data.worldStorage[char.currentArea_id].miniAreas[char.currentMiniArea_id];
+
+            const idx = miniAreaItems.findIndex(o => o.idObj == objId);
+            if (idx !== -1) {
+                const item = miniAreaItems.splice(idx, 1)[0];
+                char.inv.push(item);
+                updateUI();
+            }
+        }
+
+        function soltarObjeto(objId) {
+            if (!gameData) return;
+            const data = gameData.dynamicData;
+            const char = data.chars[data.worldState.turnActionPlayer_id];
+
+            const idx = char.inv.findIndex(o => o.idObj == objId);
+            if (idx !== -1) {
+                const item = char.inv.splice(idx, 1)[0];
+                // Lo movemos a la miniArea actual del personaje
+                const miniAreaItems = data.worldStorage[char.currentArea_id].miniAreas[char.currentMiniArea_id];
+                miniAreaItems.push(item);
+                updateUI();
+            }
+        }
+
+        function moverPosicion(array, index, direccion) {
+            if (!array || index < 0) return;
+
+            const nuevaPosicion = index + direccion;
+
+            // Verificar que el movimiento sea posible
+            if (nuevaPosicion >= 0 && nuevaPosicion < array.length) {
+                // Intercambio de posiciones (Swap)
+                const temp = array[index];
+                array[index] = array[nuevaPosicion];
+                array[nuevaPosicion] = temp;
+
+                updateUI(); // Refrescar la interfaz
+            }
+        }
+
+        // Esta función sirve de puente para identificar el array real en el objeto global
+        function moverPosicionDirecta(arrayEncoded, index, direccion) {
+            const tempArray = JSON.parse(decodeURIComponent(arrayEncoded));
+            const targetObjId = tempArray[index].idObj; // Identificamos qué objeto queremos mover
+
+            // Función buscadora para encontrar el array que contiene ese ID dentro de gameData
+            const findAndSwap = (rootArray) => {
+                const idx = rootArray.findIndex(o => o && o.idObj === targetObjId);
+                if (idx !== -1) {
+                    const newPos = idx + direccion;
+                    if (newPos >= 0 && newPos < rootArray.length) {
+                        [rootArray[idx], rootArray[newPos]] = [rootArray[newPos], rootArray[idx]];
+                        return true;
+                    }
+                }
+                // Si no está aquí, buscar en sub-inventarios recursivamente
+                for (let obj of rootArray) {
+                    const sub = obj.items || obj.content || obj.inv;
+                    if (Array.isArray(sub) && findAndSwap(sub)) return true;
+                }
+                return false;
+            };
+
+            // Buscamos en todas las fuentes posibles
+            const limbo = gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global;
+            let sources = [...getAllSources(gameData.dynamicData), limbo];
+            for (let src of sources) {
+                if (findAndSwap(src)) break;
+            }
+
+            updateUI();
+        }
+
+        // Asegúrate de tener esta función para borrar objetos (que llamamos en detallar)
+        function eliminarObjeto(id) {
+            if (!confirm("¿Eliminar objeto #" + id + "? (No lo podrás recuperar sin copia de seguridad si exportas)")) return;
+
+            const sId = String(id);
+            const removeFrom = (arr) => {
+                const idx = arr.findIndex(o => String(o.idObj) === sId);
+                if (idx !== -1) {
+                    // Añadir ID a reutilizables
+                    gameData.dynamicData.worldState.reusableObjIds.push(parseInt(id));
+                    arr.splice(idx, 1);
+                    return true;
+                }
+                for (let obj of arr) {
+                    const sub = obj.items || obj.content || obj.inv;
+                    if (Array.isArray(sub) && removeFrom(sub)) return true;
+                }
+                return false;
+            };
+
+            const limbo = gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global;
+            let sources = [...getAllSources(gameData.dynamicData), limbo];
+            for (let src of sources) {
+                if (removeFrom(src)) {
+                    alert("Objeto eliminado con éxito.");
+                    break;
+                }
+            }
+            updateUI();
+        }
+
+        function abrirSelectorContenedores(idObjetoAMover) {
+            const data = gameData.dynamicData;
+            const char = data.chars[data.worldState.turnActionPlayer_id];
+            const miniAreaItems = data.worldStorage[char.currentArea_id].miniAreas[char.currentMiniArea_id];
+
+            // 1. Unimos todos los posibles candidatos (suelo + inventario)
+            const todosLosObjetos = [...miniAreaItems, ...char.inv];
+
+            // 2. Filtramos: que tengan un array de inventario y que no sean el objeto mismo
+            const contenedoresValidos = todosLosObjetos.filter(obj =>
+                obj.idObj !== idObjetoAMover && (obj.items || obj.content || obj.inv)
+            );
+
+            if (contenedoresValidos.length === 0) {
+                alert("No hay contenedores válidos (mochilas, cofres, etc.) cerca o en tu inventario.");
+                return;
+            }
+
+            const candidatos = [];
+            const buscarCandidatos = (arr) => {
+                for (let o of arr) {
+                    if (o.idObj != idObjetoAMover && (o.items || o.content || o.inv)) {
+                        candidatos.push(o);
+                    }
+                    const sub = o.items || o.content || o.inv;
+                    if (Array.isArray(sub)) buscarCandidatos(sub);
+                }
+            };
+            buscarCandidatos(todosLosObjetos);
+
+            if (candidatos.length === 0) {
+                alert("No hay contenedores válidos cerca.");
+                return;
+            }
+
+            let menu = "Selecciona el ID del contenedor destino:\n\n";
+            candidatos.forEach(c => {
+                menu += `ID: ${c.idObj} - ${c.n || c.name || 'Sin nombre'}\n`;
+            });
+
+            const destId = prompt(menu);
+            if (destId) {
+                // Llamamos a tu función original pasando el destino elegido
+                moveIntoContainer(idObjetoAMover, destId);
+            }
+        }
+    </script>
+</body>
+
+</html>
