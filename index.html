@@ -286,160 +286,14 @@
 
         function updateUI() {
             if (!gameData) return;
-
-            // 1. Referencias Globales
-            const data = gameData.dynamicData;
-            const world = data.worldState;
-            const turnId = world.turnActionPlayer_id;
             const selectedId = document.getElementById('charSelect').value;
-            const char = data.chars[selectedId];
-            const allChars = data.chars;
-            const storage = data.worldStorage;
-            const lostFound = storage["SYSTEM_LOST_FOUND"];
-            const limboRef = lostFound.miniAreas.Contenedor_Global;
-
-            // --- SECCIÓN MUNDO (SIEMPRE VISIBLE) ---
-            let limboHtml = "";
-
-            if (lostFound && lostFound.miniAreas.Contenedor_Global.length > 0) {
-                limboHtml = `
-    <div class="data-box" style="border-left: 4px solid #9b59b6; background: #251b2d; margin-top:15px;">
-        <h3 style="color:#9b59b6">🌌 Limbo Global</h3>
-        ${detallar(limboRef, true, 'LIMBO', null, limboRef)} 
-    </div>
-`;
-            }
-            document.getElementById('worldContent').innerHTML = `
-        <div class="data-box" style="border-left-color: #f1c40f;">
-            <h3>Escenario Global</h3>
-            <p><strong>Dificultad:</strong> <span style="color:#ff4757">${world.currDiff}</span></p>
-            <p><strong>Tiempo:</strong> Día ${world.time.day}, ${world.time.h}hs</p>
-            <p><strong>Idioma:</strong> ${world.gameLang}</p>
-            <p><strong>Turno actual:</strong> <span class="badge">${world.turnActionPlayer_id}</span></p>
-        </div>
-        ${limboHtml}`;
-
-            // --- PROCESAR DATOS DE UBICACIÓN (NUEVA ESTRUCTURA) ---
-            const areaId = char.currentArea_id;
-            const miniId = char.currentMiniArea_id;
-            const areaData = storage[areaId] || {};
-            const localItems = (areaData.miniAreas && areaData.miniAreas[miniId]) ? areaData.miniAreas[miniId] : [];
-            const infoClima = areaData.weather || "No definido";
-
-            const htmlStats = `
-        <div class="data-box">
-            <h3>📊 Ficha: ID: ${selectedId} | Apodo: ${char.nick} | Edad: ${char.age} | Género: ${char.fem ? '♀' : '♂'} | Omnipotente: ${char.omnipotent ? 'Si' : 'No'} | Contador Esporas Bosque mágico: ${char.magicForestToxin_h} | Estado: ${char.state}</h3>
-            <p>📍 <strong>${areaId}</strong> > <strong>${miniId}</strong> | ☁️ <strong>${infoClima}</strong></p>
-            <hr>
-            <div class="stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <p>Comida: ${char.food[0]}/${char.food[1]}</p>
-                <p>Agua: ${char.water[0]}/${char.water[1]}</p>
-                <p>Dormir: ${char.sleep[0]}/${char.sleep[1]}</p>
-                <p>HP: ${char.hp[0]}/${char.hp[1]}</p>
-                <p>Energía: ${char.energy[0]}/${char.energy[1]}</p>
-                <p>Daño Mágico: ${char.magDmg[0]}/${char.magDmg[1]}</p>
-                <p>Defensa Mágica: ${char.magDef[0]}/${char.magDef[1]}</p>
-                <p>Velocidad Volar: ${char.flySpd[0]}/${char.flySpd[1]}</p>
-                <p>Daño Físico: ${char.physDmg[0]}/${char.physDmg[1]}</p>
-                <p>Defensa Física: ${char.physDef[0]}/${char.physDef[1]}</p>
-                <p>Velocidad Correr: ${char.runSpd[0]}/${char.runSpd[1]}</p>
-                <p>Reflejos: ${char.refl[0]}/${char.refl[1]}</p>
-                </div>
-        </div>
-    `;
-
-            // Visualización de Inventario + Objetos en el Suelo
-            const htmlInv = `
-        <div class="data-box" style="border-left-color: #3498db;">
-            <h3>🎒 Inventario Personal</h3>
-            ${detallar(char.inv, true, "", null)}
-        </div>
-        <div class="data-box" style="border-left-color: #2ecc71;">
-            <h3>📦 Objetos en el área (${miniId})</h3>
-            ${localItems.length > 0 ? detallar(localItems, false, "", null) : "<p style='color:#666'>No hay nada en el suelo.</p>"}
-        </div>
-    `;
-
-            const htmlExtra = `
-        <div class="data-box">
-            <h3>✨ Memorias</h3>
-            ${detallar(char.memories, false, "", null)}
-            <hr>
-            <h3>✨ Habilidades</h3>
-            ${detallar(char.skills, false, "", null)}
-            <hr>
-            <h3>✨ Efectos Activos</h3>
-            ${detallar(char.activeEffects, false, "", null)}
-            <hr>
-            <h3>✨ Personajes Detectados Cerca</h3>
-            ${detallar(char.detectedCharsNearbyList, false, "", null)}
-            <hr>
-            <h3>✨ Algo extra...</h3>
-            ${detallar(char.extra, false, "", null)}
-        </div>
-    `;
-
-            // --- LÓGICA DEL PROMPT (CON FILTRADO GEOGRÁFICO) ---
-            const promptSection = document.getElementById('sec-prompt');
-            const container = promptSection.querySelector('.data-box');
-
-            if (selectedId !== turnId) {
-                // BLOQUEO: Si el seleccionado no es el del turno actual
-                container.innerHTML = `
-                    <div style="text-align:center; padding: 20px; opacity: 0.8;">
-                        <h3 style="color:var(--accent);">🔒 Control Desactivado</h3>
-                        <p>Estás viendo a <b>${char.nick}</b>, pero es el turno de actuar de <b>${world.turnActionPlayer_id}</b>.</p>
-                        <p style="font-size:0.9em; color:#888;">Cambia al personaje del turno para elegir acciones o generar el prompt.</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = `<h3>Última Narración</h3>
-            <p style="font-style: italic; color: #bbb;">"${world.lastNarration.text}"</p>
-            <strong>Opciones disponibles:</strong>
-            <ul>${world.lastNarration.options.map(o => `<li>${o}</li>`).join('')}</ul>`;
-
-                if (!world.lastNarration.OptChosen) {
-                    // MODO: Elegir acción (igual que antes)
-                    container.innerHTML += `
-            <h3>🤔 ¿Qué vas a hacer? (Sugerencias opcionales)</h3>
-            <ul style="font-size: 0.85em; color: #ff4757; cursor: pointer;">
-                ${world.lastNarration.options.map(o => `<li onclick="setOption('${o}')">${o}</li>`).join('')}
-            </ul>
-            <textarea id="customOpt" placeholder="Acción personalizada..." style="width:100%; height:60px; background:#222; color:#fff; padding:10px;"></textarea>
-            <button class="nav-btn" onclick="confirmAction()">Confirmar Acción</button>
-            <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Exportar JSON</button>`;
-                } else {
-                    renderGeneratedPrompt(container, char, world, data, turnId);
-                }
-            }
-
-            // Inyectar datos
-            document.getElementById('statsContent').innerHTML = htmlStats;
-            document.getElementById('invContent').innerHTML = htmlInv;
-            document.getElementById('extraContent').innerHTML = htmlExtra;
-            // --- RENDERIZADO FINAL DE "VER TODO" ---
-            document.getElementById('allContent').innerHTML = `
-                <h2 style="color:var(--accent); border-bottom: 1px solid #333; padding-bottom: 5px;">📊 Atributos Principales</h2>
-                ${htmlStats}
-
-                <h2 style="color:#3498db; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top:30px;">🎒 Inventario Completo</h2>
-                ${htmlInv}
-
-                <h2 style="color:#9b59b6; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top:30px;">✨ Recuerdos y Extras</h2>
-                ${htmlExtra}
-
-                <div style="margin-top:40px;">
-                    <h2 style="color:#f1c40f; border-bottom: 2px solid #f1c40f; padding-bottom: 5px;">🌍 Estado del Mundo</h2>
-                    ${document.getElementById('worldContent').innerHTML}
-                </div>
-
-                <div style="margin-top:40px;">
-                    <h2 style="color:var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 5px;">🤖 Acción y Prompt</h2>
-                    <div class="data-box" style="border-left-color: var(--accent); margin-top:10px;">
-                        ${container.innerHTML}
-                    </div>
-                </div>
-            `;
+            const areaData = gameData.dynamicData.worldStorage[gameData.dynamicData.chars[selectedId].currentArea_id] || {};
+            document.getElementById('statsContent').innerHTML = UIComponents.stats(selectedId, gameData.dynamicData.chars[selectedId], areaData.weather || "No definido");
+            document.getElementById('invContent').innerHTML = UIComponents.inventory(gameData.dynamicData.chars[selectedId], (areaData.miniAreas && areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id]) ? areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id] : []);
+            document.getElementById('worldContent').innerHTML = UIComponents.world(gameData.dynamicData);
+            document.getElementById('extraContent').innerHTML = UIComponents.extra(gameData.dynamicData.chars[selectedId]);
+            document.getElementById('sec-prompt').querySelector('.data-box').innerHTML = UIComponents.prompt(selectedId, gameData.dynamicData);
+            document.getElementById('allContent').innerHTML = UIComponents.all(document.getElementById('statsContent').innerHTML,document.getElementById('invContent').innerHTML,document.getElementById('extraContent').innerHTML,document.getElementById('worldContent').innerHTML,document.getElementById('sec-prompt').querySelector('.data-box').innerHTML)
         }
 
         // Función para el botón de copiar
@@ -663,7 +517,7 @@ ACCIÓN DEL JUGADOR:
             const dataWithoutChars = JSON.parse(JSON.stringify(filteredData));
             dataWithoutChars.chars = {};
 
-            const parte1Content = `SISTEMA: Touhou Survival RPG (Parte 1)\nREGLAS MOTOR:\n${JSON.stringify(engineRules, null, 1)}\n\nESTADO MUNDO:\n${JSON.stringify(dataWithoutChars, null, 1)}\n\n${aditionalInstructions}`;
+            const parte1Content = `SISTEMA: Touhou Survival RPG (Parte 1)\nREGLAS MOTOR:\n${JSON.stringify(engineRules, null, 1)}\n\nESTADO MUNDO:\n${JSON.stringify(dataWithoutChars, null, 1)}\n\n${instructions}`;
 
             let batches = [];
             let currentBatch = {};
@@ -740,11 +594,11 @@ ACCIÓN DEL JUGADOR:
             }, 2000);
         }
 
-        function renderGeneratedPrompt(container, char, world, data, turnId) {
+        function getHtmlGeneratedPrompt(dynamicData, selectedId) {
             // 1. Clonamos los datos para no romper el original al filtrar
-            const filteredData = JSON.parse(JSON.stringify(data));
-            const areaIdTarget = char.currentArea_id;
-            const miniIdTarget = char.currentMiniArea_id;
+            const filteredData = JSON.parse(JSON.stringify(dynamicData));
+            const areaIdTarget = dynamicData.chars[selectedId].currentArea_id;
+            const miniIdTarget = dynamicData.chars[selectedId].currentMiniArea_id;
 
             // Función auxiliar para procesar el estado de la miniArea
             const obtenerResumenMiniArea = (contenido, esMismaArea) => {
@@ -830,7 +684,7 @@ ACCIÓN DEL JUGADOR:
                 // 1. No es el personaje del turno actual
                 // 2. NO es un jugador (isPlayer no es true)
                 // 3. Nadie lo está detectando
-                if (id !== String(turnId) && !pj.isPlayer && !allDetectedIds.has(String(id))) {
+                if (id !== String(dynamicData.worldState.turnActionPlayer_id) && !pj.isPlayer && !allDetectedIds.has(String(id))) {
 
                     const mensajeOculto = "(OCULTO: última vez visto en su ubicación registrada)";
 
@@ -851,7 +705,7 @@ ACCIÓN DEL JUGADOR:
                     note_omnipotent: "true = narrative omnipotence; false = DO NOT allow impossible actions (fail if attempted)!!!",
                     Note_activeEffects: "Effects may have a 'delay_to_start' (e.g., 45min for Paracetamol)"
                 },*/
-                difficultyIntention: gameData.possibleDifficulties[world.currDiff],
+                difficultyIntention: gameData.possibleDifficulties[dynamicData.worldState.currDiff],
                 engineConfig: gameData.engineConfig,
                 worldMechanics: gameData.worldMechanics
             };
@@ -860,7 +714,7 @@ ACCIÓN DEL JUGADOR:
             const fullContext = {
                 engineRules: engineRules,
                 dynamicData: filteredData,
-                action: world.lastNarration.OptChosen
+                action: dynamicData.worldState.lastNarration.OptChosen
             };
 
             const allPrompts = generateMultiprompt(fullContext, 30000);
@@ -878,7 +732,7 @@ ACCIÓN DEL JUGADOR:
             });
             buttonsHtml += `</div>`;
 
-            container.innerHTML = `
+            return `
         <h3>✅ Prompt para la IA</h3>
         ${buttonsHtml}
         <textarea id="promptTextArea" readonly placeholder="Haz clic en un botón para copiar..."
@@ -891,15 +745,7 @@ ACCIÓN DEL JUGADOR:
 
         function selectActivePlayer() {
             if (!gameData) return;
-
-            // Obtenemos el ID del jugador que tiene el turno desde el estado del mundo
-            const turnId = gameData.dynamicData.worldState.turnActionPlayer_id;
-            const select = document.getElementById('charSelect');
-
-            // Cambiamos el valor del select al ID del turno
-            select.value = turnId;
-
-            // Forzamos la actualización de la interfaz para que se vea su ficha
+            document.getElementById('charSelect').value = gameData.dynamicData.worldState.turnActionPlayer_id;
             updateUI();
         }
 
@@ -1256,8 +1102,15 @@ ACCIÓN DEL JUGADOR:
             const idx = char.inv.findIndex(o => o.idObj == objId);
             if (idx !== -1) {
                 const item = char.inv.splice(idx, 1)[0];
-                // Lo movemos a la miniArea actual del personaje
-                const miniAreaItems = data.worldStorage[char.currentArea_id].miniAreas[char.currentMiniArea_id];
+                let area = data.worldStorage[char.currentArea_id];
+
+                // Si por alguna razón la miniArea no existe o es un string descriptivo
+                if (!Array.isArray(area.miniAreas[char.currentMiniArea_id])) {
+                    // Opcional: Podrías guardar la descripción antigua en un log o simplemente sobreescribirla
+                    area.miniAreas[char.currentMiniArea_id] = [];
+                }
+
+                const miniAreaItems = area.miniAreas[char.currentMiniArea_id];
                 miniAreaItems.push(item);
                 updateUI();
             }
@@ -1286,6 +1139,7 @@ ACCIÓN DEL JUGADOR:
 
             // Función buscadora para encontrar el array que contiene ese ID dentro de gameData
             const findAndSwap = (rootArray) => {
+                if (!Array.isArray(rootArray)) return false;
                 const idx = rootArray.findIndex(o => o && o.idObj === targetObjId);
                 if (idx !== -1) {
                     const newPos = idx + direccion;
@@ -1389,7 +1243,152 @@ ACCIÓN DEL JUGADOR:
                 moveIntoContainer(idObjetoAMover, destId);
             }
         }
+
+        // Reemplaza los bucles repetitivos en eliminar, mover y limbo con esto:
+        function findItemContext(objId) {
+            const root = gameData.dynamicData;
+            const sId = String(objId).trim();
+
+            // Todas las fuentes posibles: Inventarios de PJs, Suelo de áreas y Limbo
+            const limbo = root.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global;
+            let sources = [...getAllSources(root), limbo];
+
+            const search = (arr) => {
+                const idx = arr.findIndex(o => String(o.idObj) === sId);
+                if (idx !== -1) return { array: arr, index: idx, item: arr[idx] };
+
+                for (let obj of arr) {
+                    const sub = obj.items || obj.content || obj.inv;
+                    if (Array.isArray(sub)) {
+                        const found = search(sub);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            };
+
+            for (let src of sources) {
+                const result = search(src);
+                if (result) return result;
+            }
+            return null;
+        }
+
+        // Crea funciones que retornen el string HTML
+        const UIComponents = {
+            stats: (selectedId, char, infoClima) => `
+    <div class="data-box">
+            <h3>📊 Ficha: ID: ${selectedId} | Apodo: ${char.nick} | Edad: ${char.age} | Género: ${char.fem ? '♀' : '♂'} | Omnipotente: ${char.omnipotent ? 'Si' : 'No'} | Contador Esporas Bosque mágico: ${char.magicForestToxin_h} | Estado: ${char.state}</h3>
+            <p>📍 <strong>${char.currentArea_id}</strong> > <strong>${char.currentMiniArea_id}</strong> | ☁️ <strong>${infoClima}</strong></p>
+            <hr>
+            <div class="stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <p>Comida: ${char.food[0]}/${char.food[1]}</p>
+                <p>Agua: ${char.water[0]}/${char.water[1]}</p>
+                <p>Dormir: ${char.sleep[0]}/${char.sleep[1]}</p>
+                <p>HP: ${char.hp[0]}/${char.hp[1]}</p>
+                <p>Energía: ${char.energy[0]}/${char.energy[1]}</p>
+                <p>Daño Mágico: ${char.magDmg[0]}/${char.magDmg[1]}</p>
+                <p>Defensa Mágica: ${char.magDef[0]}/${char.magDef[1]}</p>
+                <p>Velocidad Volar: ${char.flySpd[0]}/${char.flySpd[1]}</p>
+                <p>Daño Físico: ${char.physDmg[0]}/${char.physDmg[1]}</p>
+                <p>Defensa Física: ${char.physDef[0]}/${char.physDef[1]}</p>
+                <p>Velocidad Correr: ${char.runSpd[0]}/${char.runSpd[1]}</p>
+                <p>Reflejos: ${char.refl[0]}/${char.refl[1]}</p>
+                </div>
+        </div>`,
+
+            inventory: (char, localItems) => `
+        <div class="data-box" style="border-left-color: #3498db;">
+            <h3>🎒 Inventario Personal</h3>
+            ${detallar(char.inv, true, "", null)}
+        </div>
+        <div class="data-box" style="border-left-color: #2ecc71;">
+            <h3>📦 Suelo (${char.currentMiniArea_id})</h3>
+            ${localItems.length > 0 ? detallar(localItems, false, "", null) : "<p>Vacío</p>"}
+        </div>`,
+
+            world: (dynamicData) => `
+        <div class="data-box" style="border-left-color: #f1c40f;">
+            <h3>Escenario Global</h3>
+            <p><strong>Dificultad:</strong> <span style="color:#ff4757">${dynamicData.worldState.currDiff}</span></p>
+            <p><strong>Tiempo:</strong> Día ${dynamicData.worldState.time.day}, ${dynamicData.worldState.time.h}hs</p>
+            <p><strong>Idioma:</strong> ${dynamicData.worldState.gameLang}</p>
+            <p><strong>Turno actual:</strong> <span class="badge">${dynamicData.worldState.turnActionPlayer_id}</span></p>
+        </div>
+        ${dynamicData.worldStorage["SYSTEM_LOST_FOUND"] && dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global.length > 0 ? `
+    <div class="data-box" style="border-left: 4px solid #9b59b6; background: #251b2d; margin-top:15px;">
+        <h3 style="color:#9b59b6">🌌 Limbo Global</h3>
+        ${detallar(dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global, true, 'LIMBO', null, dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global, -1)} 
+    </div>
+` : ""}`,
+            extra: (char) => `
+        <div class="data-box">
+            <h3>✨ Memorias</h3>
+            ${detallar(char.memories, false, "", null)}
+            <hr>
+            <h3>✨ Habilidades</h3>
+            ${detallar(char.skills, false, "", null)}
+            <hr>
+            <h3>✨ Efectos Activos</h3>
+            ${detallar(char.activeEffects, false, "", null)}
+            <hr>
+            <h3>✨ Personajes Detectados Cerca</h3>
+            ${detallar(char.detectedCharsNearbyList, false, "", null)}
+            <hr>
+            <h3>✨ Algo extra...</h3>
+            ${detallar(char.extra, false, "", null)}
+        </div>`,
+            prompt: (selectedId, dynamicData) => {
+                if (selectedId !== dynamicData.worldState.turnActionPlayer_id) {
+                // BLOQUEO: Si el seleccionado no es el del turno actual
+                return `
+                    <div style="text-align:center; padding: 20px; opacity: 0.8;">
+                        <h3 style="color:var(--accent);">🔒 Control Desactivado</h3>
+                        <p>Estás viendo a <b>${gameData.dynamicData.chars[selectedId].nick}</b>, pero es el turno de actuar de <b>${dynamicData.worldState.turnActionPlayer_id}</b>.</p>
+                        <p style="font-size:0.9em; color:#888;">Cambia al personaje del turno para elegir acciones o generar el prompt.</p>
+                    </div>`;
+            } else {
+                if (!dynamicData.worldState.lastNarration.OptChosen) {
+                    // MODO: Elegir acción (igual que antes)
+                    return `
+                    <h3>Última Narración</h3>
+            <p style="font-style: italic; color: #bbb;">"${dynamicData.worldState.lastNarration.text}"</p>
+            <strong>Opciones disponibles:</strong>
+            <ul>${dynamicData.worldState.lastNarration.options.map(o => `<li>${o}</li>`).join('')}</ul>
+            <h3>🤔 ¿Qué vas a hacer? (Sugerencias opcionales)</h3>
+            <ul style="font-size: 0.85em; color: #ff4757; cursor: pointer;">
+                ${dynamicData.worldState.lastNarration.options.map(o => `<li onclick="setOption('${o}')">${o}</li>`).join('')}
+            </ul>
+            <textarea id="customOpt" placeholder="Acción personalizada..." style="width:100%; height:60px; background:#222; color:#fff; padding:10px;"></textarea>
+            <button class="nav-btn" onclick="confirmAction()">Confirmar Acción</button>
+            <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Exportar JSON</button>`;
+                } else {
+                    return getHtmlGeneratedPrompt(dynamicData, selectedId);
+                }
+            }
+            },
+            all: (stats,inv,extra,world,prompt) => `
+                <h2 style="color:var(--accent); border-bottom: 1px solid #333; padding-bottom: 5px;">📊 Atributos Principales</h2>
+                ${stats}
+
+                <h2 style="color:#3498db; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top:30px;">🎒 Inventario Completo</h2>
+                ${inv}
+
+                <h2 style="color:#9b59b6; border-bottom: 1px solid #333; padding-bottom: 5px; margin-top:30px;">✨ Recuerdos y Extras</h2>
+                ${extra}
+
+                <div style="margin-top:40px;">
+                    <h2 style="color:#f1c40f; border-bottom: 2px solid #f1c40f; padding-bottom: 5px;">🌍 Estado del Mundo</h2>
+                    ${world}
+                </div>
+
+                <div style="margin-top:40px;">
+                    <h2 style="color:var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 5px;">🤖 Acción y Prompt</h2>
+                    <div class="data-box" style="border-left-color: var(--accent); margin-top:10px;">
+                        ${prompt}
+                    </div>
+                </div>`
+        }
     </script>
 </body>
-
 </html>

@@ -1,0 +1,803 @@
+{
+    "possibleDifficulties": {
+        "Easy": {
+            "intention": "Could survive and perhaps win any individual encounter even without weapons"
+        },
+        "Normal": {
+            "intention": "Good chance to survive and perhaps win encounters that would be rare to survive in Hard difficulty, but without total abuse (starting state could beat beings like Rumia or Cirno, but rare to beat Yukari or Hecatia)."
+        },
+        "Hard": {
+            "intention": "Be realistic (merciless but without exaggerating player adversities)."
+        }
+    },
+    "engineConfig": {
+        "name": "Touhou Survival RPG",
+        "mode": "Hardcore",
+        "time": "24h format. 60min = 1h. Update after each action.",
+        "death": "hp <= 0: Permadeath",
+        "generalInfo": "If a value is unknown or could have infinite values, null is acceptable. Mechanics or values not specifying difficulty usually apply to all. 'omnipotent': true grants narrative omnipotence, but actions must be described in an atmospheric style, not just automatic victory. 'omnipotent' defaults to false; it is solely the player's decision to change it to true for themselves or selected NPCs."
+    },
+    "worldMechanics": {
+        "hourly_decay": {
+            "food": -1,
+            "water": -1,
+            "sleep": -1,
+            "hp_regen": 1.5,
+            "energy_regen": 100
+        },
+        "zero_penalty": {
+            "food": "-150hp/h",
+            "water": "-250hp/h",
+            "sleep": "-120hp/h, -70% stats",
+            "energy": "cannot move"
+        },
+        "magicForestSpores": {
+            "note": "Only in Magic Forest. 'states' in order ('magicForestToxin_h', 'stateThreshold_h')",
+            "magicForestSporesImmunity": 16,
+            "stateThreshold_h": 4,
+            "states": [
+                "1. Normal",
+                "2. Strong Discomfort/possible hallucinations",
+                "3. Moderate",
+                "4. Mild",
+                "5. Immune"
+            ],
+            "scale": {
+                "E": 1,
+                "N": 2,
+                "H": 3
+            }
+        }
+    },
+    "dynamicData": {
+        "worldState": {
+            "turnActionPlayer_id": "P1",
+            "gameLang": "ES",
+            "currDiff": "Easy",
+            "lastGeneratedObjId": 13,
+            "reusableObjIds": [],
+            "time": {
+                "day": 1,
+                "h": "20:30"
+            },
+            "lastNarration": {
+                "text": "Decides no tentar a la suerte quedándote quieto en un lugar que ahora huele a azufre y energía disipada. Deslizas el Fragmento de Núcleo en uno de los compartimentos laterales de tu mochila; su frío intenso atraviesa la tela por un instante antes de estabilizarse. Marisa asiente con aprobación, ajustando su sombrero mientras su escoba flota impaciente bajo sus pies.\n\n— «Sabia elección, ze. Los recolectores lentos terminan siendo recolectados por algo más grande. ¡Sígueme el ritmo!»\n\nComenzáis a moveros con mayor celeridad. El sendero, si es que alguna vez existió uno, desaparece bajo una alfombra de musgo bioluminiscente que emite un pulso cian rítmico. Te adentras en el 'Claro de los Hongos Luminosos' y la vista es hipnótica: hongos del tamaño de sombrillas brotan de los troncos caídos, desprendiendo esporas que brillan como polvo de estrellas en la penumbra. Sin embargo, la belleza es engañosa; sientes un ligero hormigueo en la nuca, una señal de que la concentración de magia aquí es lo suficientemente alta como para distorsionar tus sentidos. A lo lejos, entre la densa niebla que rodea el claro, divisas finalmente una silueta arquitectónica que no encaja con la naturaleza salvaje: un tejado de estilo tradicional japonés, algo desvencijado y rodeado de pilas de libros y calderos que rebosan hacia el exterior.\n\n— «¡Ahí está! Mi humilde y desordenada morada», exclama Marisa acelerando un poco. El aire aquí es más seco, como si la casa misma repeliera la humedad del bosque, pero el olor a polvo de estrellas y metal caliente es casi abrumador.",
+                "options": [
+                    "1. Entrar directamente con Marisa: Estás deseando dejar atrás la atmósfera opresiva del bosque y ver qué tesoros o peligros guarda esa casa.",
+                    "2. Inspeccionar los alrededores antes de entrar: Las pilas de objetos afuera parecen interesantes, y Marisa mencionó a una 'chica con muñecas' que podría andar cerca.",
+                    "3. Ofrecer ayuda con el equipaje o materiales: — «Es un lugar... interesante. ¿Quieres que te ayude a meter algo de eso antes de que la niebla lo arruine?»"
+                ],
+                "OptChosen": ""
+            }
+        },
+        "chars": {
+            "id_tplMANDATORY": {
+                "ai_note": "Do not delete this tpl. Use this exact structure for every new NPC or player, adapting numerical values to context.",
+                "nick": "string",
+                "age": "numeric",
+                "isPlayer": "boolean",
+                "fem": "b",
+                "omnipotent": "b, d false",
+                "currentArea_id": "s",
+                "currentMiniArea_id": "s",
+                "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h), range: 0.00 - 'magicForestSporesImmunity'. Don't forget States from 'magicForestSpores'",
+                "state": "s",
+                "food": [
+                    "dec (current)",
+                    "d (max), human d 500"
+                ],
+                "water": [
+                    "d",
+                    "d, hd 100"
+                ],
+                "sleep": [
+                    "d",
+                    "d, hd 200"
+                ],
+                "hp": [
+                    "d",
+                    "d"
+                ],
+                "energy": [
+                    "d",
+                    "d (100 = average outsider human)"
+                ],
+                "magDmg": [
+                    "d",
+                    "d"
+                ],
+                "magDef": [
+                    "d",
+                    "d"
+                ],
+                "flySpd": [
+                    "d",
+                    "d"
+                ],
+                "physDmg": [
+                    "d",
+                    "d"
+                ],
+                "physDef": [
+                    "d",
+                    "d"
+                ],
+                "runSpd": [
+                    "d",
+                    "d"
+                ],
+                "refl": [
+                    "d",
+                    "d"
+                ],
+                "activeEffects": [
+                    "object (e.g.: { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'})"
+                ],
+                "skills": [
+                    "s (e.g.: fantasy seal, sword)"
+                ],
+                "memories": [
+                    "s (e.g.: left my Backpack at Marisa's house -> create that miniArea in area magic forest if it doesn't exist, same with new Areas)"
+                ],
+                "IAaddMemories": [
+                    ""
+                ],
+                "inv": [
+                    "o, def clothes worn. If items available (e.g., weapons, Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
+                    "items like Backpack if not carried, use worldStorage with Same Area and miniArea with this char and leave the backback's info there until is carried again, etc",
+                    "Don't forget idObj in every object. reusableObjIds (first value and remove it from the list), if it's empty then lastGeneratedObjId +1 and update it. This is next obj ID available",
+                    {
+                        "weight_penalization": "food, energy, spd (Try low penalization)"
+                    }
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": "s",
+                        "recognized": "b"
+                    }
+                ],
+                "extra": [
+                    "o, other important details"
+                ],
+                "tplReimuDefault": {
+                    "idReimu": {
+                        "nick": "Reimu Hakurei",
+                        "age": 18,
+                        "isPlayer": false,
+                        "fem": true,
+                        "omnipotent": false,
+                        "currentArea_id": null,
+                        "currentMiniArea_id": null,
+                        "magicForestToxin_h": 16,
+                        "state": null,
+                        "food": [
+                            null,
+                            500
+                        ],
+                        "water": [
+                            null,
+                            100
+                        ],
+                        "sleep": [
+                            null,
+                            200
+                        ],
+                        "hp": [
+                            null,
+                            1500
+                        ],
+                        "energy": [
+                            null,
+                            250
+                        ],
+                        "magDmg": [
+                            null,
+                            2000
+                        ],
+                        "magDef": [
+                            null,
+                            1500
+                        ],
+                        "flySpd": [
+                            null,
+                            4500
+                        ],
+                        "physDmg": [
+                            null,
+                            100
+                        ],
+                        "physDef": [
+                            null,
+                            400
+                        ],
+                        "runSpd": [
+                            null,
+                            60
+                        ],
+                        "refl": [
+                            null,
+                            4000
+                        ],
+                        "activeEffects": [
+                            ""
+                        ],
+                        "skills": [
+                            "Volar, Spells, Armas",
+                            ""
+                        ],
+                        "memories": [
+                            "Conoce a casi todos, a los nuevos humanos perdidos no']"
+                        ],
+                        "IAaddMemories": [
+                            ""
+                        ],
+                        "inv": [
+                            {
+                                "idObj": "Next obj ID available",
+                                "n": "Hakurei Shrine Maiden (miko) outfit, customized and distinctive, predominantly red and white",
+                                "det": "Equipado"
+                            },
+                            {
+                                "weapons": [
+                                    {
+                                        "idObj": "Next obj ID available",
+                                        "n": "Gohei"
+                                    },
+                                    {
+                                        "idObj": "Next obj ID available",
+                                        "n": "Yin-Yang Orb"
+                                    },
+                                    {
+                                        "idObj": "Next obj ID available",
+                                        "n": "Ofuda",
+                                        "q": 5
+                                    }
+                                ]
+                            }
+                        ],
+                        "detectedCharsNearbyList": [
+                            {
+                                "nearby_pj_id": null,
+                                "recognized": false
+                            }
+                        ],
+                        "extra": [
+                            {}
+                        ]
+                    }
+                }
+            },
+            "P1": {
+                "nick": "Pepito",
+                "age": 18,
+                "isPlayer": true,
+                "fem": false,
+                "omnipotent": false,
+                "currentArea_id": "MagicForest",
+                "currentMiniArea_id": "AlrededoresCasaMarisa",
+                "magicForestToxin_h": 14.41,
+                "state": "Llegando a la casa de Marisa",
+                "food": [
+                    496.95,
+                    500
+                ],
+                "water": [
+                    94.95,
+                    100
+                ],
+                "sleep": [
+                    185.54,
+                    200
+                ],
+                "hp": [
+                    3000,
+                    3000
+                ],
+                "energy": [
+                    335,
+                    500
+                ],
+                "magDmg": [
+                    3000,
+                    3000
+                ],
+                "magDef": [
+                    2500,
+                    2500
+                ],
+                "flySpd": [
+                    5000,
+                    5000
+                ],
+                "physDmg": [
+                    750,
+                    750
+                ],
+                "physDef": [
+                    1350,
+                    1350
+                ],
+                "runSpd": [
+                    375,
+                    375
+                ],
+                "refl": [
+                    5000,
+                    5000
+                ],
+                "activeEffects": [],
+                "skills": [
+                    "Esfera mágica básica",
+                    "Volar",
+                    "Master Spark",
+                    "Comunicacion mental (mensaje + respuesta) 20m max",
+                    ""
+                ],
+                "memories": [
+                    "Recuerdo un destello blanco antes de despertar aquí. Este bosque en donde desperté se siente hostil. Siento que tengo habilidades mágicas, pero no sé quién más habita este bosque.",
+                    "Contruí un pequeño refugio bajo las raíces de un gran árbol para mantenerme oculto. He camuflado mi refugio con ramas y follaje, mucho más difícil de detectar. He ocultado mi mochila en el refugio y dormí 6 horas en mi refugio.",
+                    "Vi una extraña luz violácea parpadeando entre la niebla del bosque, lo evité. Encontré un arroyo junto a una cabaña con una escoba que parece tener vida propia, me alejé.",
+                    "Encontré un claro con un pozo natural y una pequeña criatura alada (NPC_Fairy_01) me observa. El agua parecía tener un brillo extraño, una alta concentración de magia y esporas.",
+                    "Evité beber el agua mágica del pozo por precaución. Volviendo a mi refugio vigilé y confirmé que el hada no me sigue. Entré a mi escondite de forma segura.",
+                    "Revisé mi mochila en el refugio, nadie me robó. Tomé paracetamol y volví a explorar. He encontrado un estanque de agua aparentemente limpia y sin dueño aunque alguien parece conocerlo porque hay liquen azul y rastros antiguos de recolección junto a un cuenco de madera tallada.",
+                    "Bebí agua del estanque usando el cuenco encontrado y lo devolví a su sitio. Explorando en otra zona encontré un arbusto con bayas púrpuras que probé, son dulces, seguras y parecen comestibles. Tras comer escuché un ruido sospechoso cerca de los arbustos; algo me acecha en la niebla.",
+                    "El hada que vi en el pozo me ha seguido hasta los arbustos de bayas. No parece agresiva, pero es persistente y juguetona. La saludé, le di un puñado de bayas que me pidió y a cambio me contó que vio a una chica con sombrero y delantal recolectando hongos al norte y que estaba enfadada por una escoba perdida y que usa ataques brillantes/ruidosos.",
+                    "He localizado a la chica del sombrero; parece estar teniendo problemas con una escoba que vuela por su cuenta. El ambiente huele a magia y pólvora. Atrapé la escoba de la chica del sombrero y se la devolví. Ella parece sorprendida.",
+                    "Se llama Marisa Kirisame, se autodenomina 'maga ordinaria', parece alguien importante o muy poderosa en este bosque, ahora sabe mi nombre, confirmó que yo soy un 'Outsider', vive en el bosque y es inmune a las esporas. Me advirtió sobre youkais, hadas peligrosas y una 'chica con muñecas'.",
+                    "Le conté a Marisa sobre mi refugio y las medicinas del mundo exterior; parece interesada. Me explicó su experimento: crear un hongo estelar de alta intensidad. La guié hasta mi refugio, parece impresionada con el camuflaje y se ha quedado vigilando afuera mientras yo entro a recoger mis pertenencias.",
+                    "Aseguré que mi refugio no fue detectado por terceros tras una inspección minuciosa, recuperé mi mochila con todas mis pertenencias (1 Linterna, 2.9 Agua, 5 Chocolate, 6 Paracetamol, 100 Dinero y 1 Manta térmica) y la llevo conmigo. He salido del refugio con Marisa hacia el norte. El bosque se siente más hostil a medida que anochece. Mi mochila vuelve a pesar, afectando mi agilidad.",
+                    "Detecté una amenaza inminente en el camino hacia la casa de Marisa. Me preparé liberando mis manos para el combate. 2 Youkais menores nos han emboscado en la niebla similares a lobos de ojos rojos. Mantuve la calma y observé su naturaleza antes de que el primero saltara sobre mí. La hembra se ha ocultado en la niebla. He repelido al primer Youkai con un golpe físico preciso. Marisa observa mi desempeño. Sé que hay un segundo atacante flanqueándome..",
+                    "He derribado al segundo Youkai con un barrido. Marisa me ha felicitado. El primer Youkai está herido pero furioso. He eliminado al segundo Youkai con un golpe de gracia físico. El otro (NPC_Youkai_M_01) huye aterrado. Marisa parece respetarme más ahora. Estamos a pocos minutos de su casa, cerca del Claro de los Hongos Luminosos. El peso de la mochila es manejable pero constante.",
+                    "Encontré un Fragmento de Núcleo Youkai (idObj 13) tras el combate, Marisa dice que sirve como catalizador o fuente de energía. El bosque parece reaccionar a la energía del fragmento. He llegado a los alrededores de la casa de Marisa. El Claro de los Hongos Luminosos es hermoso pero inquietante. He guardado el fragmento youkai de forma segura."
+                ],
+                "IAaddMemories": [
+                    ""
+                ],
+                "inv": [
+                    {
+                        "idObj": 0,
+                        "n": "Ropa exterior",
+                        "det": "Equipado"
+                    },
+                    {
+                        "idObj": 1,
+                        "n": "Mochila",
+                        "carried": true,
+                        "items": [
+                            {
+                                "idObj": 2,
+                                "n": "Manta térmica",
+                                "q": 1
+                            },
+                            {
+                                "idObj": 3,
+                                "n": "Linterna",
+                                "q": 1
+                            },
+                            {
+                                "idObj": 4,
+                                "n": "Agua",
+                                "q": 2.9
+                            },
+                            {
+                                "idObj": 5,
+                                "n": "Chocolate",
+                                "q": 5
+                            },
+                            {
+                                "idObj": 6,
+                                "n": "Paracetamol",
+                                "q": 6
+                            },
+                            {
+                                "idObj": 7,
+                                "n": "Dinero",
+                                "q": 100
+                            },
+                            {
+                                "idObj": 13,
+                                "n": "Fragmento de Núcleo Youkai",
+                                "q": 1,
+                                "det": "Cristal carmesí frío, contiene energía mágica residual."
+                            }
+                        ]
+                    }
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": "NPC_Marisa_Kirisame",
+                        "recognized": true
+                    }
+                ],
+                "extra": [
+                    {}
+                ]
+            },
+            "NPC_Fairy_01": {
+                "nick": "Hada del Bosque",
+                "age": 100,
+                "isPlayer": false,
+                "fem": true,
+                "omnipotent": false,
+                "currentArea_id": "MagicForest",
+                "currentMiniArea_id": "ZonaArbustosBayas",
+                "magicForestToxin_h": 16,
+                "state": "Satisfecha / Alejandose",
+                "food": [
+                    100,
+                    100
+                ],
+                "water": [
+                    100,
+                    100
+                ],
+                "sleep": [
+                    200,
+                    200
+                ],
+                "hp": [
+                    50,
+                    50
+                ],
+                "energy": [
+                    100,
+                    100
+                ],
+                "magDmg": [
+                    20,
+                    20
+                ],
+                "magDef": [
+                    15,
+                    15
+                ],
+                "flySpd": [
+                    800,
+                    800
+                ],
+                "physDmg": [
+                    2,
+                    2
+                ],
+                "physDef": [
+                    5,
+                    5
+                ],
+                "runSpd": [
+                    10,
+                    10
+                ],
+                "refl": [
+                    100,
+                    100
+                ],
+                "activeEffects": [
+                    {}
+                ],
+                "skills": [
+                    "Volar",
+                    "Pequeños proyectiles de luz"
+                ],
+                "memories": [
+                    "Vive en el bosque, le gusta observar a los extraños.",
+                    "El humano (P1) me habló y no me atacó. Quiero sus bayas. Me dio bayas ricas, le advertí sobre la humana del sombrero al norte."
+                ],
+                "inv": [
+                    {
+                        "idObj": 8,
+                        "n": "Vestido de hojas",
+                        "det": "Equipado"
+                    }
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": null,
+                        "recognized": false
+                    }
+                ],
+                "extra": {},
+                "IAaddMemories": [
+                    ""
+                ]
+            },
+            "NPC_Marisa_Kirisame": {
+                "nick": "Chica del sombrero (Marisa)",
+                "age": 18,
+                "isPlayer": false,
+                "fem": true,
+                "omnipotent": false,
+                "currentArea_id": "MagicForest",
+                "currentMiniArea_id": "AlrededoresCasaMarisa",
+                "magicForestToxin_h": 16,
+                "state": "Llegando a su hogar / Orgullosa",
+                "food": [
+                    397.45,
+                    500
+                ],
+                "water": [
+                    75.45,
+                    100
+                ],
+                "sleep": [
+                    148.45,
+                    200
+                ],
+                "hp": [
+                    2500,
+                    2500
+                ],
+                "energy": [
+                    345,
+                    500
+                ],
+                "magDmg": [
+                    4500,
+                    4500
+                ],
+                "magDef": [
+                    3000,
+                    3000
+                ],
+                "flySpd": [
+                    6000,
+                    6000
+                ],
+                "physDmg": [
+                    200,
+                    200
+                ],
+                "physDef": [
+                    500,
+                    500
+                ],
+                "runSpd": [
+                    100,
+                    100
+                ],
+                "refl": [
+                    4500,
+                    4500
+                ],
+                "activeEffects": [],
+                "skills": [
+                    "Volar",
+                    "Master Spark",
+                    "Magia de Estrellas",
+                    "Recolección experta"
+                ],
+                "memories": [
+                    "Mi escoba está actuando raro otra vez, ¡se escapa! Tengo que preparar más pociones.",
+                    "Un humano extraño apareció de la nada y atrapó mi escoba, no parece de por aquí pero tiene buenos reflejos, se llama Pepito, es servicial y no parece tener miedo, lo cual es raro, definitivamente es un Outsider, parece razonable y curioso, le expliqué lo básico sobre las esporas y los peligros del bosque, me pregunto si servirá como asistente para mis experimentos.",
+                    "Pepito tiene un refugio bajo tierra y medicinas del mundo exterior. Interesante. Veremos si esas píldoras sirven para algo más que el dolor de cabeza. Vamos a por ellas antes de ir a mi casa para el experimento del hongo estelar.",
+                    "Llegamos al refugio de Pepito. Está realmente bien escondido para ser un novato. Me quedo fuera haciendo guardia. Me pregunto qué tipo de 'tesoros' del mundo exterior guardará en esa mochila. Es precavido, revisó los alrededores antes de entrar. Recuperó su mochila 'del mundo exterior'.",
+                    "Estamos de camino a mi casa. El Outsider parece ansioso por la niebla. Debo estar atenta a los youkai del camino. Pepito es eficiente eliminando amenazas. Me preguntó cuánto falta; estamos cerca. El bosque está agitado esta noche. Pepito encontró un fragmento de núcleo. Tiene buen ojo para el botín.",
+                    "He traído al Outsider a casa. Espero que no toque nada que pueda explotar... bueno, nada que no deba explotar."
+                ],
+                "inv": [
+                    {
+                        "idObj": 9,
+                        "n": "Mini-Hakkero",
+                        "det": "Reactor mágico de bolsillo"
+                    },
+                    {
+                        "idObj": 10,
+                        "n": "Sombrero de bruja",
+                        "det": "Equipado"
+                    },
+                    {
+                        "idObj": 11,
+                        "n": "Escoba mágica",
+                        "det": "Madera vieja, parece tener voluntad propia. (Recuperada)"
+                    },
+                    {
+                        "idObj": 12,
+                        "n": "Ropa de bruja",
+                        "det": "Equipado"
+                    }
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": "P1",
+                        "recognized": true
+                    }
+                ],
+                "extra": {
+                    "catchphrase": "ze"
+                },
+                "IAaddMemories": [
+                    ""
+                ]
+            },
+            "NPC_Youkai_M_01": {
+                "nick": "Youkai menor acechante",
+                "age": 45,
+                "isPlayer": false,
+                "fem": false,
+                "omnipotent": false,
+                "currentArea_id": "MagicForest",
+                "currentMiniArea_id": "ZonaArboles1",
+                "magicForestToxin_h": 16,
+                "state": "Fuera de alcance / Huido",
+                "hp": [
+                    110,
+                    150
+                ],
+                "energy": [
+                    60,
+                    100
+                ],
+                "magDmg": [
+                    50,
+                    50
+                ],
+                "magDef": [
+                    30,
+                    30
+                ],
+                "physDmg": [
+                    80,
+                    80
+                ],
+                "physDef": [
+                    40,
+                    40
+                ],
+                "runSpd": [
+                    200,
+                    200
+                ],
+                "refl": [
+                    100,
+                    150
+                ],
+                "skills": [
+                    "Salto acrobático",
+                    "Garras"
+                ],
+                "detectedCharsNearbyList": [
+                    {
+                        "nearby_pj_id": null,
+                        "recognized": false
+                    }
+                ],
+                "inv": []
+            }
+        },
+        "worldStorage": {
+            "SYSTEM_LOST_FOUND": {
+                "note": "Contenedor de objetos que han desaparecido de la vista del jugador pero existen en el mundo.",
+                "miniAreas": {
+                    "Contenedor_Global": []
+                }
+            },
+            "MagicForest": {
+                "weather": "Niebla densa",
+                "freq": [
+                    "Marisa",
+                    "Alice",
+                    "Rinnosuke",
+                    "Fairies and minor Youkai (Cirno, Rumia, generics, etc)"
+                ],
+                "occ": [
+                    "Humans (Perdidos)",
+                    "Yukari",
+                    "Reimu",
+                    "Sakuya",
+                    "Youmu",
+                    "Mokou"
+                ],
+                "rare": [
+                    "Humans (Aldea)",
+                    "Scarlet Residents",
+                    "Eirin",
+                    "Kaguya",
+                    "Hecatia"
+                ],
+                "miniAreas": {
+                    "ZonaArboles1": [],
+                    "AlrededoresCasaMarisa": "Lugar caótico lleno de materiales mágicos, pilas de libros antiguos y restos de experimentos fallidos bajo un porche de madera.",
+                    "EntradaPrincipalCasaMarisa": [],
+                    "AlrededoresCasaAlice": [],
+                    "EntradaPrincipalCasaAlice": [],
+                    "RefugioImprovisado_Arbol": [
+                        "Zona sombría bajo raíces",
+                        "Suelo de tierra y musgo",
+                        "Protegido de la lluvia y vista aérea",
+                        "Entrada camuflada con vegetación densa"
+                    ],
+                    "Arroyo_CercaCasaMarisa": [
+                        "Arroyo de corriente suave",
+                        "Rocas con musgo fluorescente",
+                        "Vista cercana a una cabaña humana desordenada"
+                    ],
+                    "ClaroHongosLuminosos": [
+                        "Hondonada con pozo de piedra natural",
+                        "Hongos amarillos rítmicos",
+                        "Vegetación densa y helechos gigantes"
+                    ],
+                    "EstanqueLiquenAzul": "Pequeño estanque natural. Se ha encontrado un cuenco de madera bajo una piedra. Rastros de recolección antiguos en los árboles.",
+                    "ZonaArbustosBayas": "Zona de árboles robustos con abundantes arbustos de bayas púrpuras comestibles (Dulces/Ácidas)."
+                }
+            },
+            "HakureiShrine": {
+                "w": null,
+                "f": [
+                    "Reimu",
+                    "Marisa",
+                    "Yukari",
+                    "Aunn"
+                ],
+                "o": [
+                    "Various Youkai",
+                    "Sakuya",
+                    "Suika",
+                    "Alice"
+                ],
+                "r": [
+                    "Humans (Perdidos)",
+                    "Gods",
+                    "Tenshi"
+                ],
+                "miniAreas": {
+                    "Alrededores": [],
+                    "EntradaPrincipal": []
+                }
+            },
+            "ScarletMans": {
+                "w": null,
+                "f": [
+                    "Remilia",
+                    "Flandre",
+                    "Sakuya",
+                    "Patchouli",
+                    "Meiling",
+                    "Koakuma",
+                    "Fairies (Sirvientas e intrusas)",
+                    "Marisa"
+                ],
+                "o": [
+                    "Reimu",
+                    "Yukari",
+                    "Aya",
+                    "Gensokyo characters (Eventos)"
+                ],
+                "r": [
+                    "Humans (General)",
+                    "Distant residents (Yuyuko)"
+                ],
+                "miniAreas": {
+                    "Alrededores": [],
+                    "EntradaPrincipal": [],
+                    "Basement": []
+                }
+            },
+            "HumVill": {
+                "w": null,
+                "f": [
+                    "Keine",
+                    "Hieda",
+                    "Kosuzu",
+                    "Humans (General)"
+                ],
+                "o": [
+                    "Reimu",
+                    "Marisa",
+                    "Yukari",
+                    "Mamizou",
+                    "Mokou",
+                    "Byakuren"
+                ],
+                "r": [
+                    "Hostile Youkai",
+                    "Kanako",
+                    "Eirin",
+                    "Underworld Residents"
+                ],
+                "miniAreas": {
+                    "Alrededores": [],
+                    "EntradaPrincipal": []
+                }
+            }
+        }
+    }
+}
