@@ -2,14 +2,6 @@
 
 <p>Un motor narrativo diseñado para ejecutar partidas de rol de supervivencia ambientadas en el mundo de Touhou Project. Este sistema permite gestionar estados complejos, mecánicas de mundo dinámicas y una sincronización precisa entre el usuario y una Inteligencia Artificial.</p>
 
-## Características del Motor
-
-	Gestión de Dificultad Dinámica: Tres niveles (Easy, Normal, Hard) que afectan las probabilidades de victoria y la hostilidad del entorno. (Por ahora es solo un prototipo así que solo hay dificultad fácil y no es personalizable a no ser que cambies el JSON desde código. Planeado interfaz personalizable en futuras versiones)
-	Mecánicas de Supervivencia: Sistema de decaimiento por hora de comida, agua, sueño y regeneración de HP/Energía.
-	Efectos Ambientales: Simulación de las toxinas del Bosque Mágico (Magic Forest Spores) con estados de inmunidad y alucinaciones.
-	Sistema de Inventario Avanzado: Soporte para contenedores (mochilas, cofres) con IDs de objetos únicos y reutilizables.
-	Persistencia de Datos: Exportación e importación mediante archivos .json para mantener la continuidad de la historia.
-
 ## Herramientas Incluidas
 ### 1. Interfaz de Usuario (index.html)
 
@@ -42,8 +34,14 @@ Descargable: Balabolka https://www.cross-plus-a.com/es/balabolka.htm
 **Música:**
 Recomendado, la que más te guste (Si no tienes idea puedes probar con música de touhou project la misma franquicia del juego)
 
-## Especificaciones Técnicas
-	Formato de Tiempo: 24h (60 min = 1h).
+## Características del Motor
+
+	Gestión de Dificultad Dinámica: Tres niveles (Easy, Normal, Hard) que afectan las probabilidades de victoria y la hostilidad del entorno. (Por ahora es solo un prototipo así que solo hay dificultad fácil y no es personalizable a no ser que cambies el JSON desde código. Planeado interfaz personalizable en futuras versiones)
+    Formato de Tiempo: 24h (60 min = 1h).
 	Muerte: Permadeath activa cuando hp <= 0.
 	Omnipotencia: Soporte para modo narrativo "Dios" mediante el flag omnipotent: true.
-	Más detalles en txt -> gdd.txt
+	Mecánicas de Supervivencia: Sistema de decaimiento por hora de comida, agua, sueño y regeneración de HP/Energía.
+	Efectos Ambientales: Simulación de las toxinas del Bosque Mágico (Magic Forest Spores) con estados de inmunidad y alucinaciones.
+	Sistema de Inventario Avanzado: Soporte para contenedores (mochilas, cofres) con IDs de objetos únicos y reutilizables.
+	Persistencia de Datos: Exportación e importación mediante archivos .json para mantener la continuidad de la historia.
+    Más detalles en txt -> gdd.txt
