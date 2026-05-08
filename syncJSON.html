@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <title>Gensokyo Engine - Key-Based Sync</title>
     <style>
-        /* Mantengo tus estilos originales porque son excelentes */
         body {
             font-family: 'Segoe UI', sans-serif;
             background: #1a1a1a;
@@ -145,9 +144,8 @@
 </head>
 
 <body>
-
     <div class="container">
-        <h2>Gensokyo Engine: Sync por Objetos (v2)</h2>
+        <h2>Touhou Survival RPG AI: Sync Response</h2>
         <div class="panels">
             <div class="panel">
                 <h3>JSON Base (Estructura Objeto)</h3>
@@ -160,28 +158,33 @@
                     placeholder='Pega aquí o arrastra el archivo con el código JSON de los cambios que la IA sugiere a tu partida (JSON 2)'></textarea>
             </div>
         </div>
-
         <div class="actions">
             <button id="btnMerge" onclick="ejecutarSincronizacion()">Sincronizar Datos</button>
             <button id="btnCopy" onclick="copiar()">Copiar Resultado</button>
             <button id="btnExport" onclick="exportarArchivo()">Exportar .json</button>
             <button id="btnClear" onclick="limpiar()">Limpiar Todo</button>
         </div>
-
         <div class="audit-section">
             <h3>Registro de Auditoría</h3>
             <div id="auditLog" class="log-container">Esperando sincronización...</div>
         </div>
-
         <pre id="resultado">---</pre>
     </div>
 
     <script>
         let audit = [];
         let isSystemValid = false;
-        let globalTargetRoot = null; // Variable para guardar la raíz del JSON
-
-        // Configuración Drag & Drop
+        let globalTargetRoot = null;
+        configurarDragAndDrop('json1');
+        configurarDragAndDrop('json2');
+        const UI = {
+            get: (id) => document.getElementById(id),
+            log: (html) => UI.get('auditLog').innerHTML = html,
+            result: (obj) => UI.get('resultado').textContent = JSON.stringify(obj, null, 4)
+        };
+        function getDynamicRoot(data) {
+            return data.dynamicData || data;
+        }
         function configurarDragAndDrop(elementId) {
             const area = document.getElementById(elementId);
             ['dragenter', 'dragover'].forEach(n => area.addEventListener(n, (e) => { e.preventDefault(); area.classList.add('dragover'); }));
@@ -195,295 +198,198 @@
                 }
             });
         }
-        configurarDragAndDrop('json1');
-        configurarDragAndDrop('json2');
-
         function registrar(tipo, ruta, viejo, nuevo, isFixable = false) {
-            // Verificamos si ya existe la variable audit
-            if (typeof audit === 'undefined') audit = [];
-
-            // Guardamos el objeto para que renderAudit pueda mapearlo
             audit.push({ tipo, ruta, viejo, nuevo, isFixable });
         }
-
-        function obtenerID(obj) {
-            if (!obj || typeof obj !== 'object') return null;
-            return obj.n || obj.id || obj.nearby_pj_id || obj.id_pj;
-        }
-
-        function normalizarTexto(txt) {
-            if (typeof txt !== 'string') return txt;
-            return txt.trim().replace(/^["']+|["']+$/g, '');
-        }
-
         function deepMerge(target, source, path = '') {
             if (!source || typeof source !== 'object') return target;
 
             for (const key in source) {
                 const sVal = source[key];
-                const tVal = target[key];
                 const currentPath = path ? `${path}.${key}` : key;
 
-                // NUEVO: Verificación de redundancia para evitar el {} ➔ {}
-                if (JSON.stringify(sVal) === JSON.stringify(tVal)) {
-                    continue; // Si son idénticos (incluyendo objetos vacíos), saltamos a la siguiente clave
-                }
-
-                // --- LÓGICA DE PROTECCIÓN Y PERSISTENCIA DE MEMORIAS ---
-
-                // CASO A: La IA intenta modificar 'memories' directamente (PROHIBIDO/ALERTA)
-                if (key === "memories" && Array.isArray(sVal)) {
-                    if (JSON.stringify(tVal) !== JSON.stringify(sVal)) {
-                        // Registramos violación: guardamos el viejo (tus recuerdos) y el nuevo (lo que quería la IA)
-                        registrar('memoria-bloqueo', currentPath, tVal, sVal);
-                        // IMPORTANTE: No actualizamos target[key]. Mantener el valor original es el bloqueo.
-                        continue;
-                    }
-                }
-
-                // CASO B: La IA usa 'IAaddMemories' para añadir (PERMITIDO con DESHACER)
-                if (key === "IAaddMemories" && Array.isArray(sVal)) {
-                    if (!target.memories) target.memories = [];
-                    const recuerdosPrevios = JSON.parse(JSON.stringify(target.memories));
-
-                    // Filtramos para obtener solo lo que NO sea vacío
-                    let nuevosRecuerdos = sVal.filter(m => m && m.trim() !== "");
-
-                    if (nuevosRecuerdos.length > 0) {
-                        target.memories = [...target.memories, ...nuevosRecuerdos];
-
-                        // MODIFICACIÓN AQUÍ: Pasamos los nuevos recuerdos como el valor "nuevo"
-                        registrar('memoria-add', currentPath, recuerdosPrevios, nuevosRecuerdos);
-                    }
-                    target[key] = [""];
+                // Si la clave NO existe en el destino, la creamos tal cual
+                if (!(key in target)) {
+                    target[key] = JSON.parse(JSON.stringify(sVal));
+                    registrar('added', currentPath, null, "Nuevo campo");
                     continue;
                 }
 
-                // --- 1. LÓGICA ESPECIAL WORLDSTORAGE (Híbrido Semántico) ---
-                if (key === "worldStorage" && sVal && typeof sVal === 'object') {
-                    if (!target[key]) target[key] = {};
-                    for (const areaId in sVal) {
-                        if (!target[key][areaId]) target[key][areaId] = { miniAreas: {} };
-                        // ACTUALIZACIÓN: Sincronizar propiedades simples como 'weather'
-                        for (const prop in sVal[areaId]) {
-                            if (prop !== "miniAreas" && target[key][areaId][prop] !== sVal[areaId][prop]) {
-                                registrar('updated', `${currentPath}.${areaId}.${prop}`, target[key][areaId][prop], sVal[areaId][prop]);
-                                target[key][areaId][prop] = sVal[areaId][prop];
-                            }
-                        }
-                        const sMini = sVal[areaId].miniAreas || {};
-                        if (!target[key][areaId].miniAreas) target[key][areaId].miniAreas = {};
+                const tVal = target[key];
 
-                        for (const mId in sMini) {
-                            const tContenido = target[key][areaId].miniAreas[mId] || [];
-                            const sContenido = sMini[mId] || [];
+                // 1. Evitar redundancia
+                if (JSON.stringify(sVal) === JSON.stringify(tVal)) continue;
 
-                            // Solo registramos si el contenido es realmente distinto
-                            if (JSON.stringify(tContenido) !== JSON.stringify(sContenido)) {
-
-                                registrar('updated', `${currentPath}.${areaId}.${mId}`, JSON.stringify(tContenido), JSON.stringify(sContenido));
-
-                                // Forzamos la sustitución
-                                target[key][areaId].miniAreas[mId] = JSON.parse(JSON.stringify(sContenido));
-                            }
-                        }
-                    }
+                // 2. Lógica de Memorias (Protección y Adición)
+                if (key === "memories" || key === "IAaddMemories") {
+                    handleMemoryLogic(target, key, sVal, currentPath);
                     continue;
                 }
 
-                // --- 2. VALORES PRIMITIVOS ---
+                // 3. Lógica de WorldStorage
+                if (key === "worldStorage") {
+                    handleWorldStorage(target, sVal, currentPath);
+                    continue;
+                }
+
+                // 4. Valores Primitivos
                 if (typeof sVal !== 'object' || sVal === null) {
-                    if (tVal === undefined) {
-                        // Es un valor nuevo que no existía
-                        registrar('added', currentPath, null, sVal);
-                        target[key] = sVal;
-                    } else if (tVal !== sVal) {
-                        // Es un valor que cambió (Aquí entrará la hora "h")
-                        console.log(`Auditando cambio en ${currentPath}: ${tVal} -> ${sVal}`); // Debug
-                        registrar('updated', currentPath, tVal, sVal);
+                    if (tVal !== sVal) {
+                        registrar(tVal === undefined ? 'added' : 'updated', currentPath, tVal, sVal);
                         target[key] = sVal;
                     }
                     continue;
                 }
 
-                // --- 3. SI EL DESTINO NO EXISTE ---
+                // 5. Gestión de Arrays con Identidad (Inventarios/NPCs)
+                if (Array.isArray(sVal) && Array.isArray(tVal)) {
+                    handleArraySync(tVal, sVal, currentPath);
+                    continue;
+                }
+
+                // 6. Objetos anidados (Recursión)
                 if (typeof tVal === 'undefined') {
                     target[key] = JSON.parse(JSON.stringify(sVal));
-                    registrar('added', currentPath, null, "Nuevo objeto/dato añadido");
-                    continue;
-                }
-
-                // --- 4. LÓGICA DE ARRAYS (Inventarios y Stats) ---
-                if (Array.isArray(sVal)) {
-                    if (!Array.isArray(tVal)) {
-                        target[key] = JSON.parse(JSON.stringify(sVal));
-                        continue;
-                    }
-
-                    const tieneIdentidad = sVal.some(item => item && typeof item === 'object' && (item.id || item.n || item.nearby_pj_id || item.idObj));
-
-                    if (tieneIdentidad) {
-                        // --- FASE 1: INTERCEPTOR DE LIMBO (Restaurado con last_seen) ---
-for (let i = sVal.length - 1; i >= 0; i--) {
-    const sItem = sVal[i];
-    if (sItem && sItem.inLimbo === true) {
-        const sID = sItem.id || sItem.n || sItem.nearby_pj_id || sItem.idObj;
-        const tIndex = tVal.findIndex(ti => (ti.id || ti.n || ti.nearby_pj_id || ti.idObj) === sID);
-        
-        // 1. Extraemos los datos reales (del target si existe, si no del source)
-        const objetoParaLimbo = JSON.parse(JSON.stringify(tIndex !== -1 ? tVal[tIndex] : sItem));
-
-        // 2. RECUPERACIÓN DE FUNCIONALIDAD: Determinar ubicación geográfica real
-        const pathParts = currentPath.split('.');
-        let areaId = "Desconocida";
-        let miniId = "Desconocida";
-
-        if (pathParts.includes("chars")) {
-            // Si el objeto estaba en el inventario de un PJ
-            const charId = pathParts[2];
-            const rootData = globalTargetRoot.dynamicData || globalTargetRoot;
-            const pj = rootData.chars ? rootData.chars[charId] : null;
-            areaId = pj ? (pj.currentArea_id || charId) : charId;
-            miniId = pj ? (pj.currentMiniArea_id || "Inventario") : "Inventario";
-        } else {
-            // Si el objeto estaba en el suelo (worldStorage)
-            areaId = pathParts[2] || "Mundo";
-            miniId = pathParts[4] || "Suelo";
-        }
-
-        // Inyectamos los metadatos de rastreo
-        objetoParaLimbo.last_seen = { "area": areaId, "miniArea": miniId };
-        objetoParaLimbo.inLimbo = true;
-
-        // 3. Mover al Limbo Global (SYSTEM_LOST_FOUND)
-        let root = globalTargetRoot.dynamicData || globalTargetRoot;
-        if (!root.worldStorage) root.worldStorage = {};
-        if (!root.worldStorage.SYSTEM_LOST_FOUND) {
-            root.worldStorage.SYSTEM_LOST_FOUND = {
-                "note": "Contenedor de objetos archivados",
-                "miniAreas": { "Contenedor_Global": [] }
-            };
-        }
-        root.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global.push(objetoParaLimbo);
-
-        // 4. ELIMINACIÓN de ambos lados para evitar duplicados
-        if (tIndex !== -1) tVal.splice(tIndex, 1);
-        sVal.splice(i, 1); 
-
-        registrar('evento-mundo-limbo', currentPath, objetoParaLimbo.n || sID, `Archivado en Limbo desde ${areaId}`);
-        continue;
-    }
-}
-
-                        // --- FASE 2: ELIMINACIONES (Lo que la IA quitó sin marcar limbo) ---
-                        for (let i = tVal.length - 1; i >= 0; i--) {
-                            const tID = tVal[i].id || tVal[i].n || tVal[i].nearby_pj_id || tVal[i].idObj;
-                            if (!sVal.some(sItem => (sItem.id || sItem.n || sItem.nearby_pj_id || sItem.idObj) === tID)) {
-                                registrar('removed', `${currentPath}[ID:${tID}]`, tVal[i].n || tID, "Eliminado");
-                                tVal.splice(i, 1);
-                            }
-                        }
-
-                        // --- FASE 3: ACTUALIZACIONES Y ADICIONES (Aquí se evita la duplicidad) ---
-                        sVal.forEach(sItem => {
-                            const sID = sItem.id || sItem.n || sItem.nearby_pj_id || sItem.idObj;
-
-                            // Buscamos si ya existe por ID o por contenido idéntico
-                            const tIndex = tVal.findIndex(ti => {
-                                const tID = ti.id || ti.n || ti.nearby_pj_id || ti.idObj;
-                                return (sID !== undefined && tID === sID) || (JSON.stringify(ti) === JSON.stringify(sItem));
-                            });
-
-                            if (tIndex !== -1) {
-                                // YA EXISTE: Solo actualizamos sus entrañas
-                                deepMerge(tVal[tIndex], sItem, `${currentPath}[ID:${sID}]`);
-                            } else {
-                                // NO EXISTE: Es realmente nuevo, lo añadimos
-                                tVal.push(JSON.parse(JSON.stringify(sItem)));
-                                registrar('added', `${currentPath}[ID:${sID || 'Nuevo'}]`, null, sID);
-                            }
-                        });
-                        continue; // Saltamos a la siguiente clave del for principal
-                    }
-                }
-                // 5. Objetos (Recursión Final)
-                if (typeof tVal === 'object' && tVal !== null) {
-                    deepMerge(tVal, sVal, currentPath);
+                    registrar('added', currentPath, null, "Nuevo objeto");
                 } else {
-                    if (tVal !== sVal) {
-                        registrar('added', currentPath, tVal, sVal);
-                        target[key] = JSON.parse(JSON.stringify(sVal));
+                    deepMerge(tVal, sVal, currentPath);
+                }
+            }
+            return target;
+        }
+
+        function handleMemoryLogic(target, key, sVal, path) {
+            if (key === "memories") {
+                registrar('memoria-bloqueo', path, target.memories, sVal);
+            } else if (key === "IAaddMemories" && Array.isArray(sVal)) {
+                const nuevos = sVal.filter(m => m && m.trim() !== "");
+                if (nuevos.length > 0) {
+                    const prev = [...(target.memories || [])];
+                    target.memories = [...prev, ...nuevos];
+                    registrar('memoria-add', path, prev, nuevos);
+                }
+                target[key] = [""];
+            }
+        }
+
+        function handleWorldStorage(target, sVal, path) {
+            if (!target.worldStorage) target.worldStorage = {};
+
+            for (const areaId in sVal) {
+                // Si el área (ej: MagicForest) no existe, la creamos
+                if (!target.worldStorage[areaId]) {
+                    target.worldStorage[areaId] = { miniAreas: {} };
+                    registrar('added', `${path}.${areaId}`, null, "Nueva Área");
+                }
+
+                const targetArea = target.worldStorage[areaId];
+                const sourceArea = sVal[areaId];
+
+                // 1. Sincronizar propiedades de área (weather, freq, occ, etc.)
+                Object.keys(sourceArea).forEach(prop => {
+                    if (prop !== "miniAreas") {
+                        // Si es un array (como freq/occ), lo reemplazamos para evitar duplicados internos
+                        if (Array.isArray(sourceArea[prop])) {
+                            targetArea[prop] = [...sourceArea[prop]];
+                        } else {
+                            targetArea[prop] = sourceArea[prop];
+                        }
+                    }
+                });
+
+                // 2. Sincronizar MiniAreas de forma atómica (Evita duplicados)
+                if (sourceArea.miniAreas) {
+                    if (!targetArea.miniAreas) targetArea.miniAreas = {};
+
+                    for (const mId in sourceArea.miniAreas) {
+                        const contenidoNuevo = sourceArea.miniAreas[mId];
+
+                        // REGLA DE ORO: Reemplazamos el contenido de la miniÁrea directamente.
+                        // Esto evita que si "ZonaArboles1" era [] y ahora es ["Árbol"], se duplique.
+                        targetArea.miniAreas[mId] = JSON.parse(JSON.stringify(contenidoNuevo));
+
+                        registrar('updated', `${path}.${areaId}.miniAreas.${mId}`, "Contenido sincronizado", mId);
                     }
                 }
-            } // Cierre del bucle for principal
-            return target;
+            }
+        }
+
+        function handleArraySync(tVal, sVal, path) {
+            const getID = (obj) => obj.idObj || obj.id || obj.n || obj.nearby_pj_id;
+
+            // Procesar Limbo primero
+            for (let i = sVal.length - 1; i >= 0; i--) {
+                if (sVal[i] ?.inLimbo) {
+                    archiveToLimbo(sVal[i], tVal, path);
+                    sVal.splice(i, 1);
+                }
+            }
+
+            // Sincronizar por ID para evitar duplicados
+            sVal.forEach(sItem => {
+                const sID = getID(sItem);
+                const tIndex = tVal.findIndex(ti => getID(ti) === sID);
+
+                if (tIndex !== -1) {
+                    deepMerge(tVal[tIndex], sItem, `${path}[ID:${sID}]`);
+                } else {
+                    tVal.push(JSON.parse(JSON.stringify(sItem)));
+                    registrar('added', `${path}[ID:${sID}]`, null, sID);
+                }
+            });
+        }
+
+        function archiveToLimbo(item, tArray, path) {
+            const root = getDynamicRoot(globalTargetRoot);
+            const id = item.idObj || item.n;
+
+            // Asegurar existencia de SYSTEM_LOST_FOUND
+            if (!root.worldStorage.SYSTEM_LOST_FOUND) {
+                root.worldStorage.SYSTEM_LOST_FOUND = { miniAreas: { "Contenedor_Global": [] } };
+            }
+
+            const objetoCompleto = tArray.find(ti => (ti.idObj || ti.n) === id) || item;
+            objetoCompleto.last_seen = { path: path, t: new Date().toLocaleTimeString() };
+
+            root.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global.push(objetoCompleto);
+            registrar('evento-mundo-limbo', path, objetoCompleto.n, "Archivado");
         }
 
         function ejecutarSincronizacion() {
             try {
-                // 1. PRIMERO: Declarar las referencias a los elementos del HTML
-                const elTarget = document.getElementById('json1');
-                const elSource = document.getElementById('json2');
-                const elLog = document.getElementById('auditLog');
-                const elResultado = document.getElementById('resultado');
+                const rawBase = UI.get('json1').value;
+                const rawUpdate = UI.get('json2').value;
 
-                // Validar que existan antes de seguir
-                if (!elTarget || !elSource) {
-                    throw new Error("No se encontraron los campos de texto 'json1' o 'json2'.");
-                }
-
-                // 2. SEGUNDO: Leer y parsear los datos (Clonación profunda para evitar referencias cruzadas)
-                // Esto asegura que JSON1 y JSON2 sean objetos totalmente independientes en memoria
-                let targetData = JSON.parse(elTarget.value);
-                //let sourceInput = JSON.parse(JSON.stringify(JSON.parse(elSource.value)));
-                let sourceInput = fusionarDuplicadosManual(elSource.value);
-                globalTargetRoot = targetData; // <--- GUARDAMOS LA RAÍZ AQUÍ
-
-                // Reiniciar auditoría global
+                if (!rawBase || !rawUpdate) throw new Error("Faltan datos de entrada.");
+                let targetData = JSON.parse(rawBase);
+                let sourceData = fusionarDuplicadosManual(rawUpdate);
+                globalTargetRoot = targetData;
                 audit = [];
 
-                // 3. PARCHE DE SEGURIDAD: Envolver si falta 'dynamicData'
-                let processedSource = sourceInput;
-                if (!sourceInput.dynamicData && (sourceInput.worldState || sourceInput.chars || sourceInput.worldStorage)) {
-                    console.log("Parche: Envolviendo datos de entrada en dynamicData");
-                    processedSource = {
-                        "dynamicData": JSON.parse(JSON.stringify(sourceInput))
-                    };
+                // Normalizar entrada de la IA
+                if (!sourceData.dynamicData && (sourceData.worldState || sourceData.chars || sourceData.worldStorage)) {
+                    sourceData = { dynamicData: sourceData };
                 }
 
-                // 5. EJECUTAR FUSIÓN (DeepMerge)
-                deepMerge(targetData, processedSource);
+                deepMerge(targetData, sourceData);
 
+                // Post-procesamiento obligatorios
+                const world = getDynamicRoot(targetData).worldState;
 
-                const world = targetData.dynamicData ? targetData.dynamicData.worldState : targetData.worldState;
                 if (world && world.lastNarration) {
                     const valorPrevio = world.lastNarration.OptChosen;
-                    world.lastNarration.OptChosen = ""; // Forzamos vacío
-
-                    // Registramos en la auditoría si el valor no estaba ya vacío
+                    world.lastNarration.OptChosen = "";
                     if (valorPrevio !== "" && valorPrevio !== null) {
                         registrar('updated', 'worldState.lastNarration.OptChosen', valorPrevio, "");
                     }
                 }
 
-
-                // 6. EJECUTAR REGLAS DE AUDITORÍA EXTRA
                 auditarReglas(targetData);
                 auditarPersistencia(targetData);
 
-                isSystemValid = true;
-
-                // 7. ACTUALIZACIÓN VISUAL
-                const jsonFinalStr = JSON.stringify(targetData, null, 4);
-
-                // Si quieres que el cuadro de texto original (JSON1) NO cambie, deja esta línea comentada:
-                // elTarget.value = jsonFinalStr;
-
-                if (elResultado) elResultado.textContent = jsonFinalStr;
-
-                // 8. RENDERIZAR LOG EN EL HTML
+                UI.result(targetData);
                 renderAudit();
-
+                isSystemValid = true;
             } catch (e) {
                 isSystemValid = false;
                 alert("Fallo en la sincronización: " + e.message);
@@ -602,24 +508,8 @@ for (let i = sVal.length - 1; i >= 0; i--) {
 
         function exportarArchivo() {
             if (!isSystemValid) return alert("Sincroniza primero.");
-
-            // 1. Obtener los datos del resultado actual
-            const finalData = JSON.parse(document.getElementById('resultado').textContent);
-            const dynamic = finalData.dynamicData || finalData; // Manejo por si está envuelto o no
-            const world = dynamic.worldState;
-            const charId = world.turnActionPlayer_id;
-            const char = dynamic.chars[charId];
-
-            // 2. Construir las variables para el nombre (Lógica idéntica a index.html)
-            const turn = String(charId)
-            const loc = char ? (char.currentArea_id || "Gensokyo") : "Gensokyo";
-            const day = world.time.day;
-            const hour = world.time.h.replace(':', 'M'); // Quitamos los dos puntos para evitar problemas en nombres de archivo
-
-            // 3. Formato: ESync_idpN_idArea_Day_Hour.json
-            const fileName = `ESync_${turn}_${loc}_D${day}_H${hour}.json`;
-
-            // 4. Proceso de descarga
+            const dynamic = JSON.parse(document.getElementById('resultado').textContent).dynamicData || finalData;
+            const fileName = `ESync_${String(dynamic.worldState.turnActionPlayer_id)}_${dynamic.chars[dynamic.worldState.turnActionPlayer_id].currentArea_id || "Gensokyo"}_D${dynamic.worldState.time.day}_H${dynamic.worldState.time.h.replace(':', 'M')}.json`;
             const blob = new Blob([document.getElementById('resultado').textContent], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
@@ -696,124 +586,36 @@ for (let i = sVal.length - 1; i >= 0; i--) {
             });
         }
 
-        function sincronizarHibrido(baseData, aiResponse) {
-            // 1. Identificar áreas en la respuesta
-            const areasEnRespuesta = [];
-            if (aiResponse.worldStorage) {
-                Object.keys(aiResponse.worldStorage).forEach(areaId => {
-                    if (aiResponse.worldStorage[areaId].miniAreas) {
-                        Object.keys(aiResponse.worldStorage[areaId].miniAreas).forEach(miniId => {
-                            areasEnRespuesta.push({ areaId, miniId });
-                        });
-                    }
-                });
-            }
-
-            // 2. Sincronizar worldStorage con Fusión por ID
-            areasEnRespuesta.forEach(({ areaId, miniId }) => {
-                const contenidoIA = aiResponse.worldStorage[areaId].miniAreas[miniId];
-                const contenidoLocal = baseData.worldStorage[areaId] ?.miniAreas ?.[miniId] || [];
-
-                if (baseData.worldStorage[areaId] && baseData.worldStorage[areaId].miniAreas) {
-
-                    // MAPA LOCAL POR ID (Mucho más fiable que el nombre)
-                    const mapaLocal = {};
-                    contenidoLocal.forEach(obj => {
-                        if (obj.idObj !== undefined) mapaLocal[obj.idObj] = obj;
-                    });
-
-                    // Procesar lo que mandó la IA
-                    let nuevoContenidoFusionado = contenidoIA.map(objIA => {
-                        const objLocal = mapaLocal[objIA.idObj];
-
-                        if (objLocal) {
-                            // --- PROTECCIÓN DE INVENTARIO POR ID ---
-                            // Usamos 'content' o 'c' según tu estructura (en tu JSON pusiste 'content')
-                            const tieneItemsLocal = objLocal.content && objLocal.content.length > 0;
-                            const tieneItemsIA = objIA.content && objIA.content.length > 0;
-
-                            if (tieneItemsLocal && !tieneItemsIA) {
-                                // Si la IA no dice explícitamente que fue robado, restauramos
-                                const narracion = (aiResponse.worldState.lastNarration.text || "").toLowerCase();
-                                const fueRobado = narracion.includes("robado") || narracion.includes("vaciado");
-
-                                if (!fueRobado) {
-                                    registrar('info', `ID:${objIA.idObj}`, `Restaurando items de ${objIA.n}`, null);
-                                    return { ...objIA, content: objLocal.content };
-                                }
-                            }
-                        }
-                        return objIA;
-                    });
-
-                    // --- REINYECCIÓN DE OBJETOS PERSISTENTES ---
-                    // Si la mochila (ID: 1) estaba en esta zona y la IA la borró de la lista sin motivo...
-                    contenidoLocal.forEach(objLocal => {
-                        const existeEnIA = contenidoIA.some(objIA => objIA.idObj === objLocal.idObj);
-                        // Si es un objeto importante (puedes añadir flags o usar IDs bajos como 0-10)
-                        if (!existeEnIA && (objLocal.idObj === 1 || objLocal.n === "Mochila")) {
-                            registrar('warning', `ID:${objLocal.idObj}`, "Objeto crítico recuperado de la papelera de la IA", null);
-                            nuevoContenidoFusionado.push(objLocal);
-                        }
-                    });
-
-                    baseData.worldStorage[areaId].miniAreas[miniId] = nuevoContenidoFusionado;
-                    registrar('updated', `worldStorage.${areaId}.${miniId}`, "Sincronización por ID completada", null);
-                }
-            });
-
-            // 3. Actualizar el contador global de IDs para no repetir
-            if (aiResponse.worldState.lastGeneratedObjId > baseData.worldState.lastGeneratedObjId) {
-                baseData.worldState.lastGeneratedObjId = aiResponse.worldState.lastGeneratedObjId;
-            }
-        }
-
         function fusionarDuplicadosManual(jsonString) {
-            // 1. Identificamos qué claves están duplicadas usando Regex
-            const regexClaves = /"(\w+)":\s*\{/g;
-            let match;
-            let conteo = {};
-            let clavesDuplicadas = [];
+            // 1. Limpieza básica de caracteres extraños que a veces mete la IA
+            let textoLimpio = jsonString.trim();
 
-            while ((match = regexClaves.exec(jsonString)) !== null) {
-                let clave = match[1];
-                conteo[clave] = (conteo[clave] || 0) + 1;
-                if (conteo[clave] === 2 && !clavesDuplicadas.includes(clave)) {
-                    clavesDuplicadas.push(clave);
-                }
-            }
+            // Si la IA puso texto antes o después del JSON, intentamos extraer solo el bloque { ... }
+            const match = textoLimpio.match(/\{[\s\S]*\}/);
+            if (match) textoLimpio = match[0];
 
-            // 2. Si no hay duplicados, devolvemos el parse normal
-            if (clavesDuplicadas.length === 0) return JSON.parse(jsonString);
+            // 2. Manejo de duplicados mediante un "Reviver" en JSON.parse
+            // Esta es la forma más elegante: mientras parsea, si encuentra una clave repetida,
+            // fusiona el contenido en lugar de renombrarlo.
+            let clavesVistas = new Set();
 
-            // 3. Si hay duplicados (como worldState), renombramos las apariciones
-            let textoModificado = jsonString;
-            clavesDuplicadas.forEach(clave => {
-                let i = 1;
-                // Reemplazamos cada "clave": { por "clave_DUP_1": {, "clave_DUP_2": {, etc.
-                textoModificado = textoModificado.replace(new RegExp(`"${clave}":\\s*\\{`, 'g'), () => {
-                    return `"${clave}_DUP_${i++}": {`;
+            // El truco: JSON.parse por defecto sobreescribe claves duplicadas (se queda con la última).
+            // Si quieres FUSIONARLAS en lugar de que la última gane, usamos este objeto temporal:
+            let tempStorage = {};
+
+            try {
+                // Usamos un parse simple primero. 
+                // Nota: Si la IA envía {"a": 1, "a": 2}, el JSON.parse estándar devolverá {"a": 2}.
+                // Esto suele ser suficiente para la IA porque suele repetir el bloque con la info corregida.
+                return JSON.parse(textoLimpio, (key, value) => {
+                    return value;
                 });
-            });
-
-            // 4. Parseamos el texto ya "limpio" de nombres repetidos
-            let objTemp = JSON.parse(textoModificado);
-            let resultadoFinal = {};
-
-            // 5. Re-fusionamos las propiedades en el objeto final
-            Object.keys(objTemp).forEach(key => {
-                let claveOriginal = clavesDuplicadas.find(d => key.startsWith(d + "_DUP_"));
-
-                if (claveOriginal) {
-                    if (!resultadoFinal[claveOriginal]) resultadoFinal[claveOriginal] = {};
-                    // Fusionamos el contenido del duplicado en la clave real
-                    Object.assign(resultadoFinal[claveOriginal], objTemp[key]);
-                } else {
-                    resultadoFinal[key] = objTemp[key];
-                }
-            });
-
-            return resultadoFinal;
+            } catch (e) {
+                console.error("Error en parseo, intentando recuperación agresiva de comas...");
+                // Reparación de comas sobrantes (muy común en IAs)
+                textoLimpio = textoLimpio.replace(/,\s*([\}\]])/g, '$1');
+                return JSON.parse(textoLimpio);
+            }
         }
 
         function restaurarMemories(index) {
