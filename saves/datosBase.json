@@ -440,20 +440,20 @@
                 }
             },
             "HakureiShrine": {
-                "w": null,
-                "f": [
+                "weather": null,
+                "freq": [
                     "Reimu",
                     "Marisa",
                     "Yukari",
                     "Aunn"
                 ],
-                "o": [
+                "occ": [
                     "Various Youkai",
                     "Sakuya",
                     "Suika",
                     "Alice"
                 ],
-                "r": [
+                "rare": [
                     "Generic Outsider Humans",
                     "Gods",
                     "Tenshi"
@@ -464,8 +464,8 @@
                 }
             },
             "ScarletMans": {
-                "w": null,
-                "f": [
+                "weather": null,
+                "freq": [
                     "Remilia",
                     "Flandre",
                     "Sakuya",
@@ -475,13 +475,13 @@
                     "Fairies (Sirvientas e intrusas)",
                     "Marisa"
                 ],
-                "o": [
+                "occ": [
                     "Reimu",
                     "Yukari",
                     "Aya",
                     "Gensokyo characters (Eventos)"
                 ],
-                "r": [
+                "rare": [
                     "Humans (General)",
                     "Distant residents (Yuyuko)"
                 ],
@@ -492,14 +492,14 @@
                 }
             },
             "HumVill": {
-                "w": null,
-                "f": [
+                "weather": null,
+                "freq": [
                     "Keine",
                     "Hieda",
                     "Kosuzu",
                     "Humans (General)"
                 ],
-                "o": [
+                "occ": [
                     "Reimu",
                     "Marisa",
                     "Yukari",
@@ -507,7 +507,7 @@
                     "Mokou",
                     "Byakuren"
                 ],
-                "r": [
+                "rare": [
                     "Hostile Youkai",
                     "Kanako",
                     "Eirin",

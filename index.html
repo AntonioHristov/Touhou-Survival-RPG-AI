@@ -139,6 +139,18 @@
         .btn-sm:hover {
             filter: brightness(1.2);
         }
+
+        .editable-val {
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        .editable-val:hover {
+            background: rgba(255, 71, 87, 0.2);
+            text-decoration: underline;
+        }
     </style>
 </head>
 
@@ -310,7 +322,14 @@
                     const contenedorActualID = dato.idObj || idPadre;
                     atributos += `<div class="inventory-box" style="margin-top:5px;"><strong style="color:var(--accent)">${k}:</strong>${detallar(v, true, contextoEspecial, contenedorActualID, v, -1)}</div>`;
                 } else {
-                    atributos += `<div><strong>${k}:</strong> ${JSON.stringify(v)}</div>`;
+                    //atributos += `<div><strong>${k}:</strong> ${JSON.stringify(v)}</div>`;
+                    atributos += `<div>
+        <strong style="color:#aaa">${k}:</strong> 
+        <span class="editable-val" style="cursor:pointer; border-bottom:1px dashed #555;" 
+              onclick="habilitarEdicionInventario(this, '${k}', ${dato.idObj})">
+            ${JSON.stringify(v)}
+        </span>
+    </div>`;
                 }
             }
             return `<div class="item-row" style="border-bottom: 1px solid #333; padding: 5px 0;"><div class="item-info">${atributos}</div><div class="item-actions">${buttonsHtml}</div></div>`;
@@ -781,24 +800,284 @@ LÓGICA DE MUNDO:
             }
             return null;
         }
+        function habilitarEdicionStatsConDecay(elemento, pjId, statKey, indice) {
+            const pj = gameData.dynamicData.chars[pjId];
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.value = pj[statKey][indice];
+            input.style.width = "50px";
+            const guardar = () => {
+                const val = parseFloat(input.value);
+                if (!isNaN(val) && val >= 0 && !(indice == 0 && val > pj[statKey][1]) && !(indice == 1 && val < pj[statKey][0])) pj[statKey][indice] = val;
+                updateUI();
+            };
+            input.onblur = guardar;
+            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            elemento.innerHTML = '';
+            elemento.appendChild(input);
+            input.focus();
+        }
+        function habilitarEdicionInventario(elemento, clave, objId) {
+            const contexto = findItemContext(objId);
+            if (!contexto) return;
+            habilitarEdicion(elemento, clave, contexto.item);
+        }
+        function habilitarEdicionArea(elemento, pjId) {
+            const pj = gameData.dynamicData.chars[pjId];
+            const areasExistentes = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND");
+
+            const select = document.createElement('select');
+            areasExistentes.forEach(area => select.add(new Option(area, area)));
+            select.add(new Option("--- Acciones ---", ""));
+    select.add(new Option("+ Crear Nueva Área...", "NEW_VAL"));
+    select.add(new Option("🗑️ Eliminar Área Actual", "DEL_VAL"));
+    select.value = pj.currentArea_id;
+
+    const guardar = () => {
+        if (select.value === "NEW_VAL") {
+            let nueva = prompt("Nombre de la nueva Área:");
+            if (nueva) {
+                nueva = nueva.trim();
+                const existe = areasExistentes.some(a => a.toLowerCase() === nueva.toLowerCase());
+                
+                if (nueva === "") return;
+                if (existe) {
+                    alert("Error: Ya existe un área con ese nombre.");
+                    return;
+                }
+
+                gameData.dynamicData.worldStorage[nueva] = { 
+                    weather: null, 
+                    miniAreas: { "Inicio": [] }, freq: [], occ: [], rare: [] 
+                };
+                pj.currentArea_id = nueva;
+                pj.currentMiniArea_id = "Inicio";
+            }
+        } else if (select.value === "DEL_VAL") {
+            if (areasExistentes.length <= 1) {
+                alert("No puedes eliminar la última área existente.");
+            } else if (confirm(`¿Estás seguro de eliminar el área "${pj.currentArea_id}" y todos sus datos?`)) {
+                const areaAEliminar = pj.currentArea_id;
+                delete gameData.dynamicData.worldStorage[areaAEliminar];
+                // Mover al personaje a la primera área que quede
+                const nuevaArea = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND")[0];
+                pj.currentArea_id = nuevaArea;
+                pj.currentMiniArea_id = Object.keys(gameData.dynamicData.worldStorage[nuevaArea].miniAreas)[0];
+            }
+        } else if (select.value !== "") {
+            pj.currentArea_id = select.value;
+            const primeraMini = Object.keys(gameData.dynamicData.worldStorage[select.value].miniAreas)[0];
+            pj.currentMiniArea_id = primeraMini || "Inicio";
+        }
+        updateUI();
+    };
+
+    select.onchange = guardar;
+    select.onblur = () => updateUI();
+    elemento.innerHTML = '';
+    elemento.appendChild(select);
+    select.focus();
+        }
+
+        function habilitarEdicionMiniArea(elemento, pjId) {
+            const pj = gameData.dynamicData.chars[pjId];
+            const areaActual = gameData.dynamicData.worldStorage[pj.currentArea_id];
+            if (!areaActual) return;
+
+            const minisExistentes = Object.keys(areaActual.miniAreas);
+            const select = document.createElement('select');
+            minisExistentes.forEach(m => select.add(new Option(m, m)));
+            select.add(new Option("--- Acciones ---", ""));
+    select.add(new Option("+ Crear Nueva MiniÁrea...", "NEW_VAL"));
+    select.add(new Option("🗑️ Eliminar MiniÁrea Actual", "DEL_VAL"));
+    select.value = pj.currentMiniArea_id;
+
+    const guardar = () => {
+        if (select.value === "NEW_VAL") {
+            let nueva = prompt("Nombre de la nueva MiniÁrea:");
+            if (nueva) {
+                nueva = nueva.trim();
+                const existe = minisExistentes.some(m => m.toLowerCase() === nueva.toLowerCase());
+
+                if (nueva === "") return;
+                if (existe) {
+                    alert("Error: Ya existe esa miniárea en esta ubicación.");
+                    return;
+                }
+
+                areaActual.miniAreas[nueva] = [];
+                pj.currentMiniArea_id = nueva;
+            }
+        } else if (select.value === "DEL_VAL") {
+            if (minisExistentes.length <= 1) {
+                alert("No puedes eliminar la única miniárea. El área debe tener al menos una.");
+            } else if (confirm(`¿Eliminar miniárea "${pj.currentMiniArea_id}"?`)) {
+                delete areaActual.miniAreas[pj.currentMiniArea_id];
+                pj.currentMiniArea_id = Object.keys(areaActual.miniAreas)[0];
+            }
+        } else if (select.value !== "") {
+            pj.currentMiniArea_id = select.value;
+        }
+        updateUI();
+    };
+
+    select.onchange = guardar;
+    select.onblur = () => updateUI();
+    elemento.innerHTML = '';
+    elemento.appendChild(select);
+    select.focus();
+}
+
+        function habilitarEdicionClima(elemento, areaId) {
+            const area = gameData.dynamicData.worldStorage[areaId];
+            if (!area) return;
+
+            const climasComunes = ["Despejado", "Niebla densa", "Lluvia", "Tormenta", "Nieve", "Viento fuerte"];
+            const select = document.createElement('select');
+            climasComunes.forEach(c => select.add(new Option(c, c)));
+            select.add(new Option("+ Personalizado...", "NEW_VAL"));
+            select.value = climasComunes.includes(area.weather) ? area.weather : "NEW_VAL";
+
+            const guardar = () => {
+                if (select.value === "NEW_VAL") {
+                    const nuevo = prompt("Describe el clima:");
+                    if (nuevo) area.weather = nuevo;
+                } else {
+                    area.weather = select.value;
+                }
+                updateUI();
+            };
+
+            select.onchange = guardar;
+            select.onblur = () => updateUI();
+            elemento.innerHTML = '';
+            elemento.appendChild(select);
+            select.focus();
+        }
+        function habilitarEdicionText(elemento, clave, path) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = path[clave];
+            Object.assign(input.style, {
+                width: "80px",
+                background: "#000",
+                color: "#00ff00",
+                border: "1px solid var(--accent)",
+                fontFamily: "monospace"
+            });
+            const guardar = () => {
+                let nuevoValor = input.value;
+                path[clave] = nuevoValor;
+                updateUI();
+            };
+            input.onblur = guardar;
+            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            elemento.innerHTML = '';
+            elemento.appendChild(input);
+            input.focus();
+        }
+        function habilitarEdicionBoolean(elemento, clave, path, valTrue = "Si", valFalse = "No") {
+            const select = document.createElement('select');
+            //const optTrue = new Option(clave === 'fem' ? 'Femenino' : 'SÍ', true);
+            //const optFalse = new Option(clave === 'fem' ? 'Masculino' : 'NO', false);
+            const optTrue = new Option(valTrue, true);
+            const optFalse = new Option(valFalse, false);
+
+            select.add(optTrue);
+            select.add(optFalse);
+            select.value = path[clave]; // Mantiene el valor previo por defecto
+
+            const guardarBool = () => {
+                // Al ser un select, siempre tendrá un valor, manteniendo el previo si no se cambia
+                path[clave] = (select.value === 'true');
+                updateUI();
+            };
+
+            select.onblur = guardarBool;
+            select.onchange = guardarBool;
+            elemento.innerHTML = '';
+            elemento.appendChild(select);
+            select.focus();
+        }
+        function habilitarEdicionNumber(elemento, clave, path, numMin = null, numMax = null) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.value = path[clave];
+            Object.assign(input.style, {
+                width: "80px",
+                background: "#000",
+                color: "#00ff00",
+                border: "1px solid var(--accent)",
+                fontFamily: "monospace"
+            });
+            const guardar = () => {
+                let nuevoValor = input.value;
+                input.type = 'number';
+                if (isNaN(nuevoValor)) {
+                    if (!confirm(`El valor previo de "${clave}" es un número. ¿Quieres guardarlo como texto de todas formas? (Si aceptas y no sabes lo que haces podrías corromper tu partida, cuidado)`)) {
+                        updateUI();
+                        return;
+                    } else {
+                        path[clave] = nuevoValor;
+                        updateUI();
+                        return;
+                    }
+                } else {
+                    if ((numMin != null && nuevoValor < numMin) || (numMax != null && nuevoValor > numMax)) {
+                        updateUI();
+                        return;
+                    }
+                }
+                path[clave] = nuevoValor;
+                updateUI();
+            };
+            input.onblur = guardar;
+            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            elemento.innerHTML = '';
+            elemento.appendChild(input);
+            input.focus();
+        }
+        function habilitarEdicion(elemento, clave, path, param1 = null, param2 = null) {
+            const posibleNum = parseFloat(path[clave]);
+            if (!isNaN(posibleNum)) {
+                return habilitarEdicionNumber(elemento, clave, path, param1, param2);
+            }
+            switch (typeof path[clave]) {
+                case "boolean":
+                    return habilitarEdicionBoolean(elemento, clave, path, param1 ? param1 : "Si", param2 ? param2 : "No");
+                case "number":
+                    return habilitarEdicionNumber(elemento, clave, path, numMin, numMax);
+                default:
+                    return habilitarEdicionText(elemento, clave, path);
+            }
+        }
         const UIComponents = {
             stats: (selectedId, char, infoClima) => `<div class="data-box">
-            <h3>📊 Ficha: ID: ${selectedId} | Apodo: ${char.nick} | Edad: ${char.age} | Género: ${char.fem ? '♀' : '♂'} | Omnipotente: ${char.omnipotent ? 'Si' : 'No'} | Contador Esporas Bosque mágico: ${char.magicForestToxin_h} | Estado: ${char.state}</h3>
-            <p>📍 <strong>${char.currentArea_id}</strong> > <strong>${char.currentMiniArea_id}</strong> | ☁️ <strong>${infoClima}</strong></p>
+            <h3>📊 Ficha: ID: ${selectedId} | 
+            Apodo: <span class="editable-val" onclick="habilitarEdicionText(this, 'nick', gameData.dynamicData.chars['${selectedId}'])">${char.nick}</span> | 
+            Edad: <span class="editable-val" onclick="habilitarEdicionNumber(this, 'age', gameData.dynamicData.chars['${selectedId}'], 0)">${char.age}</span> | 
+            Género: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'fem', gameData.dynamicData.chars['${selectedId}'], 'Femenino ♀', 'Masculino ♂')">${char.fem ? 'Femenino ♀' : 'Masculino ♂'}</span> | 
+            Omnipotente: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'omnipotent', gameData.dynamicData.chars['${selectedId}'])">${char.omnipotent ? 'Sí' : 'No'}</span>
+            Contador Esporas Bosque mágico: <span class="editable-val" onclick="habilitarEdicion(this, 'magicForestToxin_h', gameData.dynamicData.chars['${selectedId}'], 0.00, 16.00)">${char.magicForestToxin_h}</span> |
+            Estado: <span class="editable-val" onclick="habilitarEdicionText(this, 'state', gameData.dynamicData.chars['${selectedId}'])">${char.state}</span></h3>
+            <p>📍 
+            <span class="editable-val" onclick="habilitarEdicionArea(this, '${selectedId}')"><strong>${char.currentArea_id}</strong></span> > 
+            <span class="editable-val" onclick="habilitarEdicionMiniArea(this, '${selectedId}')"><strong>${char.currentMiniArea_id}</strong></span> | 
+            ☁️ <span class="editable-val" onclick="habilitarEdicionClima(this, '${char.currentArea_id}')"><strong>${infoClima}</strong></span>
+            </p>
             <hr>
-            <div class="stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                <p>Comida: ${char.food ? char.food[0]+"/"+char.food[1] : "No tiene"}</p>
-                <p>Agua: ${char.water ? char.water[0]+"/"+char.water[1] : "No tiene"}</p>
-                <p>Dormir: ${char.sleep ? char.sleep[0]+"/"+char.sleep[1] : "No tiene"}</p>
-                <p>HP: ${char.hp ? char.hp[0]+"/"+char.hp[1] : "No tiene"}</p>
-                <p>Energía: ${char.energy ? char.energy[0]+"/"+char.energy[1] : "No tiene"}</p>
-                <p>Daño Mágico: ${char.magDmg ? char.magDmg[0]+"/"+char.magDmg[1] : "No tiene"}</p>
-                <p>Defensa Mágica: ${char.magDef ? char.magDef[0]+"/"+char.magDef[1] : "No tiene"}</p>
-                <p>Velocidad Volar: ${char.flySpd ? char.flySpd[0]+"/"+char.flySpd[1] : "No tiene"}</p>
-                <p>Daño Físico: ${char.physDmg ? char.physDmg[0]+"/"+char.physDmg[1] : "No tiene"}</p>
-                <p>Defensa Física: ${char.physDef ? char.physDef[0]+"/"+char.physDef[1] : "No tiene"}</p>
-                <p>Velocidad Correr: ${char.runSpd ? char.runSpd[0]+"/"+char.runSpd[1] : "No tiene"}</p>
-                <p>Reflejos: ${char.refl ? char.refl[0]+"/"+char.refl[1] : "No tiene"}</p>
+                <div class="stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    ${['food', 'water', 'sleep', 'hp', 'energy', 'magDmg', 'magDef', 'flySpd', 'physDmg', 'physDef', 'runSpd', 'refl'].map(stat => {
+                if (!char[stat]) {
+                    char[stat] = [0, 0];
+                }
+                return `<p>
+                <strong>${UIComponents.translate(stat)}:</strong> 
+                    ${char[stat][0] == 0 && char[stat][1] == 0 ? `<span>(No tiene)</span>` : ``}
+                    <span class="editable-val" onclick="habilitarEdicionStatsConDecay(this, '${selectedId}', '${stat}', 0)">${char[stat][0]}</span> / 
+                    <span class="editable-val" onclick="habilitarEdicionStatsConDecay(this, '${selectedId}', '${stat}', 1)">${char[stat][1]}</span>
+                </p>`;
+                }).join('')}
                 </div>
         </div>`,
             inventory: (char, localItems) => `<div class="data-box" style="border-left-color: #3498db;">
@@ -811,10 +1090,21 @@ LÓGICA DE MUNDO:
         </div>`,
             world: (dynamicData) => `<div class="data-box" style="border-left-color: #f1c40f;">
             <h3>Escenario Global</h3>
-            <p><strong>Dificultad:</strong> <span style="color:#ff4757">${dynamicData.worldState.currDiff}</span></p>
-            <p><strong>Tiempo:</strong> Día ${dynamicData.worldState.time.day}, ${dynamicData.worldState.time.h}hs</p>
-            <p><strong>Idioma:</strong> ${dynamicData.worldState.gameLang}</p>
-            <p><strong>Turno actual:</strong> <span class="badge">${dynamicData.worldState.turnActionPlayer_id}</span></p>
+            <p><strong>Dificultad:</strong> 
+            <span class="editable-val" onclick="habilitarEdicion(this, 'currDiff', gameData.dynamicData.worldState)">${dynamicData.worldState.currDiff}</span>
+        </p>
+        <p><strong>Día:</strong> 
+            <span class="editable-val" onclick="habilitarEdicion(this, 'day', gameData.dynamicData.worldState.time)">${dynamicData.worldState.time.day}</span>
+        </p>
+        <p><strong>Hora:</strong> 
+            <span class="editable-val" onclick="habilitarEdicion(this, 'h', gameData.dynamicData.worldState.time)">${dynamicData.worldState.time.h}</span>
+        </p>
+        <p><strong>Idioma:</strong> 
+            <span class="editable-val" onclick="habilitarEdicion(this, 'gameLang',  gameData.dynamicData.worldState)">${dynamicData.worldState.gameLang}</span>
+        </p>
+        <p><strong>Turno Actual ID Jugador:</strong> 
+            <span class="editable-val" onclick="habilitarEdicion(this, 'turnActionPlayer_id',  gameData.dynamicData.worldState)">${dynamicData.worldState.turnActionPlayer_id}</span>
+        </p>
         </div>
         ${dynamicData.worldStorage["SYSTEM_LOST_FOUND"] && dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global.length > 0 ? `
     <div class="data-box" style="border-left: 4px solid #9b59b6; background: #251b2d; margin-top:15px;">
@@ -877,7 +1167,39 @@ LÓGICA DE MUNDO:
                     <div class="data-box" style="border-left-color: var(--accent); margin-top:10px;">
                         ${prompt}
                     </div>
-                </div>`
+                </div>`,
+            translate: (word) => {
+                word = word.toLowerCase()
+                switch (word) {
+                    case "food":
+                        return "Comida";
+                    case "water":
+                        return "Agua";
+                    case "sleep":
+                        return "Dormir";
+                    case "hp":
+                        return "Salud";
+                    case "energy":
+                        return "Energia";
+                    case "magdmg":
+                        return "Daño Mágico";
+                    case "magdef":
+                        return "Defensa Mágica";
+                    case "flyspd":
+                        return "Velocidad Volar";
+                    case "physdmg":
+                        return "Daño Físico";
+                    case "physdef":
+                        return "Defensa Física";
+                    case "runspd":
+                        return "Velocidad Correr";
+                    case "refl":
+                        return "Reflejos";
+
+                    default:
+                        return "Not Found";
+                }
+            }
         }
     </script>
 </body>
