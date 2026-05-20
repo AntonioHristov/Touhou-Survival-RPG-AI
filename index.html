@@ -283,7 +283,7 @@
             let atributos = "";
             let buttonsHtml = "";
             const currentIdObj = dato.idObj;
-            if (arrayContenedor && arrayContenedor.length > 1 && index !== -1) {
+            if (esInventario && arrayContenedor && arrayContenedor.length > 1 && index !== -1) {
                 const canUp = index > 0;
                 const canDown = index < arrayContenedor.length - 1;
                 const arrayStr = encodeURIComponent(JSON.stringify(arrayContenedor));
@@ -319,10 +319,15 @@
                     atributos += `<div style="color:#9b59b6; font-size:0.85em;">📍 Visto en: ${v.area} > ${v.miniArea}</div>`;
                 }
                 else if (k === 'items' || k === 'content' || k === 'inv' || (Array.isArray(v) && k !== 'detectedCharsNearbyList')) {
-                    const contenedorActualID = dato.idObj || idPadre;
-                    atributos += `<div class="inventory-box" style="margin-top:5px;"><strong style="color:var(--accent)">${k}:</strong>${detallar(v, true, contextoEspecial, contenedorActualID, v, -1)}</div>`;
+                    const contenedorActualID = (dato.idObj !== undefined && dato.idObj !== null) ? dato.idObj : idPadre;
+            atributos += `<div class="inventory-box" style="margin-top:5px;">
+                <strong class="editable-val" style="color:var(--accent); cursor:pointer; border-bottom:1px dashed var(--accent);" 
+                        onclick="habilitarEdicionInventario(this, '${k}', ${contenedorActualID})">
+                    ${k}:
+                </strong>
+                ${detallar(v, true, contextoEspecial, contenedorActualID, v, -1)}
+            </div>`;
                 } else {
-                    //atributos += `<div><strong>${k}:</strong> ${JSON.stringify(v)}</div>`;
                     atributos += `<div>
         <strong style="color:#aaa">${k}:</strong> 
         <span class="editable-val" style="cursor:pointer; border-bottom:1px dashed #555;" 
@@ -818,10 +823,218 @@ LÓGICA DE MUNDO:
             input.focus();
         }
         function habilitarEdicionInventario(elemento, clave, objId) {
-            const contexto = findItemContext(objId);
-            if (!contexto) return;
-            habilitarEdicion(elemento, clave, contexto.item);
+    // 1. Comprobación estricta de ID para permitir el número 0
+    if (objId === undefined || objId === null) {
+        alert(`❌ Error técnico: No se pudo determinar el #ID del objeto dueño de la propiedad "${clave}".`);
+        return;
+    }
+
+    const contexto = findItemContext(objId);
+    if (!contexto) {
+        alert(`⚠️ Error: El motor no encontró ningún objeto con el ID #${objId} en el mapa de datos.`);
+        return;
+    }
+    const objetoReal = contexto.item;
+
+    // 2. Excepción estricta para la clave primaria del motor
+    if (clave === 'idObj') {
+        alert("⚠️ Por seguridad del motor, no está permitido alterar ni remover la clave 'idObj'.");
+        return;
+    }
+
+    // 3. Mapeo dinámico y contextual de opciones
+    // Guardaremos las acciones reales en un array para que los números siempre sean correlativos (1, 2, 3...)
+    let accionesDisponibles = [];
+    let textoMenu = `🛠️ GESTIÓN DE PROPIEDADES (Objeto #${objId})\n` +
+                    `Etiqueta seleccionada: "${clave}"\n\n` +
+                    `Escribe el número de la acción que deseas realizar:\n`;
+
+    if (clave === 'items' && Array.isArray(objetoReal[clave])) {
+        // Estructura de opciones correlativas para contenedores (items)
+        accionesDisponibles = ["EDITAR_ESTRUCTURA", "ELIMINAR_KEY", "AÑADIR_SUB_OBJETO"];
+        
+        textoMenu += `1️⃣  Ver/Editar estructura cruda de "${clave}"\n` +
+                     `2️⃣  ELIMINAR por completo el contenedor "${clave}"\n\n` +
+                     `📦 PROPIEDADES DE CONTENEDOR:\n` +
+                     `3️⃣  Añadir un NUEVO objeto DENTRO de este contenedor (items)`;
+    } else {
+        // Estructura de opciones correlativas para propiedades comunes
+        accionesDisponibles = ["EDITAR_VALOR", "AÑADIR_KEY", "ELIMINAR_KEY"];
+        
+        textoMenu += `1️⃣  Editar valor de "${clave}"\n` +
+                     `2️⃣  Añadir una NUEVA propiedad/key a este objeto\n` +
+                     `3️⃣  ELIMINAR por completo la propiedad "${clave}"`;
+    }
+
+    const inputUsuario = prompt(textoMenu, "1");
+    if (!inputUsuario) return; // Cancelado por el usuario
+
+    // Convertimos la entrada a índice del array (ej: si escribe "1" -> índice 0)
+    const indiceAccion = parseInt(inputUsuario) - 1;
+    const accionSeleccionada = accionesDisponibles[indiceAccion];
+
+    // Control estricto: Si la acción no existe en el mapa contextual actual, se aborta de inmediato
+    if (!accionSeleccionada) {
+        alert("❌ Opción no válida.");
+        return;
+    }
+
+    // 4. Ejecución de la lógica según la acción seleccionada dinámicamente
+    switch (accionSeleccionada) {
+        
+        case "EDITAR_VALOR":
+        case "EDITAR_ESTRUCTURA":
+            if (typeof objetoReal[clave] === 'object' && objetoReal[clave] !== null) {
+                return habilitarEdicionJSON(elemento, clave, objetoReal);
+            }
+            return habilitarEdicion(elemento, clave, objetoReal);
+
+        case "AÑADIR_KEY":
+            const nuevaKey = prompt("Escribe el nombre de la NUEVA key/etiqueta (ej: d, q, etc.):");
+            if (!nuevaKey) return;
+            
+            const keyFormateada = nuevaKey.trim();
+            if (keyFormateada === "idObj") {
+                alert("❌ No puedes crear una propiedad llamada 'idObj'.");
+                return;
+            }
+
+            if (objetoReal.hasOwnProperty(keyFormateada)) {
+                alert(`⚠️ La propiedad "${keyFormateada}" ya existe en este objeto.`);
+                return;
+            }
+
+            // Si intenta forzar un contenedor desde aquí, lo creamos adecuadamente
+            if (keyFormateada === 'items' || keyFormateada === 'content' || keyFormateada === 'inv') {
+                if (confirm(`📦 Detectado nombre de contenedor ("${keyFormateada}").\n\n¿Quieres inicializarlo como un espacio vacío listo para guardar sub-objetos?`)) {
+                    objetoReal[keyFormateada] = [];
+                    alert(`¡Contenedor "${keyFormateada}" creado con éxito!\nAhora haz clic sobre su etiqueta para meter objetos.`);
+                    updateUI();
+                    return;
+                }
+            }
+
+            const nuevoValorInput = prompt(`Escribe el valor para "${keyFormateada}"\n(Soporta JSON crudo como: "texto", 42, true, [] o {}):`, '""');
+            if (nuevoValorInput === null) return;
+
+            try {
+                objetoReal[keyFormateada] = JSON.parse(nuevoValorInput);
+            } catch (e) {
+                objetoReal[keyFormateada] = nuevoValorInput;
+            }
+
+            alert(`¡Propiedad "${keyFormateada}" añadida con éxito!`);
+            updateUI();
+            break;
+
+        case "ELIMINAR_KEY":
+            const todasLasKeys = Object.keys(objetoReal);
+            // Evitamos que el objeto quede inservible si solo tiene su ID y la propiedad actual
+            if (todasLasKeys.length <= 2) {
+                alert(`⚠️ Error: No puedes eliminar "${clave}". Debe quedar al menos una propiedad descriptiva además de 'idObj'.`);
+                return;
+            }
+
+            if (confirm(`🗑️ ¿Estás seguro de que deseas borrar la propiedad "${clave}" de este objeto?`)) {
+                delete objetoReal[clave];
+                alert(`Propiedad "${clave}" eliminada.`);
+                updateUI();
+            }
+            break;
+
+        case "AÑADIR_SUB_OBJETO":
+            crearSubObjetoEnContenedor(objetoReal[clave]);
+            break;
+    }
+}
+        function crearSubObjetoEnContenedor(arrayContenedor) {
+            if (!gameData) return;
+
+            // 1. Calcular de forma limpia la ID única respetando la regla nº 5 del motor
+            let nuevoId;
+            let worldState = gameData.dynamicData.worldState;
+
+            if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
+                nuevoId = worldState.reusableObjIds[0];
+            } else {
+                nuevoId = worldState.lastGeneratedObjId + 1;
+            }
+
+            // 2. Plantilla para guiar la creación del sub-objeto
+            const plantillaSubObjeto = {
+                "n": "Objeto Guardado",
+                "d": "Está dentro de un contenedor.",
+                "q": 1
+            };
+
+            const mensajePrompt = `📦 Creando sub-objeto DENTRO del contenedor.\n` +
+                `Se le asignará automáticamente el #ID: ${nuevoId}\n\n` +
+                `Introduce el JSON del nuevo objeto:`;
+
+            const inputUsuario = prompt(mensajePrompt, JSON.stringify(plantillaSubObjeto, null, 4));
+            if (!inputUsuario) return;
+
+            try {
+                const objetoParseado = JSON.parse(inputUsuario);
+
+                if (Array.isArray(objetoParseado)) {
+                    alert("⚠️ Error: Debes introducir un objeto '{}', no una lista.");
+                    return;
+                }
+
+                // 3. Confirmar y extraer la ID del pool global
+                if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
+                    nuevoId = worldState.reusableObjIds.shift();
+                } else {
+                    worldState.lastGeneratedObjId++;
+                    nuevoId = worldState.lastGeneratedObjId;
+                }
+
+                // Inyectar el ID obligatorio
+                objetoParseado.idObj = nuevoId;
+
+                // 4. Hacer push en el array interno del contenedor que pasamos por referencia
+                arrayContenedor.push(objetoParseado);
+
+                alert(`¡Sub-objeto creado con éxito (ID #${nuevoId}) dentro del contenedor!`);
+                updateUI();
+
+            } catch (error) {
+                alert("❌ ERROR JSON INVÁLIDO:\n\n" + error.message);
+            }
         }
+        function habilitarEdicionJSON(elemento, clave, path) {
+            const input = document.createElement('input');
+            input.type = 'text';
+            // Mostramos el objeto o array serializado en una sola línea para edición rápida
+            input.value = JSON.stringify(path[clave]);
+
+            Object.assign(input.style, {
+                width: "150px", // Un poco más ancho ya que contendrá estructuras JSON
+                background: "#000",
+                color: "#00ff00",
+                border: "1px solid var(--accent)",
+                fontFamily: "monospace"
+            });
+
+            const guardarJSON = () => {
+                try {
+                    const parsed = JSON.parse(input.value);
+                    path[clave] = parsed;
+                    updateUI();
+                } catch (error) {
+                    alert("❌ ERROR: El formato JSON que intentas guardar no es válido.\nRevisa las llaves, corchetes o comillas.");
+                    updateUI();
+                }
+            };
+
+            input.onblur = guardarJSON;
+            input.onkeydown = (e) => { if (e.key === 'Enter') guardarJSON(); };
+            elemento.innerHTML = '';
+            elemento.appendChild(input);
+            input.focus();
+        }
+
         function habilitarEdicionArea(elemento, pjId) {
             const pj = gameData.dynamicData.chars[pjId];
             const areasExistentes = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND");
@@ -829,54 +1042,54 @@ LÓGICA DE MUNDO:
             const select = document.createElement('select');
             areasExistentes.forEach(area => select.add(new Option(area, area)));
             select.add(new Option("--- Acciones ---", ""));
-    select.add(new Option("+ Crear Nueva Área...", "NEW_VAL"));
-    select.add(new Option("🗑️ Eliminar Área Actual", "DEL_VAL"));
-    select.value = pj.currentArea_id;
+            select.add(new Option("+ Crear Nueva Área...", "NEW_VAL"));
+            select.add(new Option("🗑️ Eliminar Área Actual", "DEL_VAL"));
+            select.value = pj.currentArea_id;
 
-    const guardar = () => {
-        if (select.value === "NEW_VAL") {
-            let nueva = prompt("Nombre de la nueva Área:");
-            if (nueva) {
-                nueva = nueva.trim();
-                const existe = areasExistentes.some(a => a.toLowerCase() === nueva.toLowerCase());
-                
-                if (nueva === "") return;
-                if (existe) {
-                    alert("Error: Ya existe un área con ese nombre.");
-                    return;
+            const guardar = () => {
+                if (select.value === "NEW_VAL") {
+                    let nueva = prompt("Nombre de la nueva Área:");
+                    if (nueva) {
+                        nueva = nueva.trim();
+                        const existe = areasExistentes.some(a => a.toLowerCase() === nueva.toLowerCase());
+
+                        if (nueva === "") return;
+                        if (existe) {
+                            alert("Error: Ya existe un área con ese nombre.");
+                            return;
+                        }
+
+                        gameData.dynamicData.worldStorage[nueva] = {
+                            weather: null,
+                            miniAreas: { "Inicio": [] }, freq: [], occ: [], rare: []
+                        };
+                        pj.currentArea_id = nueva;
+                        pj.currentMiniArea_id = "Inicio";
+                    }
+                } else if (select.value === "DEL_VAL") {
+                    if (areasExistentes.length <= 1) {
+                        alert("No puedes eliminar la última área existente.");
+                    } else if (confirm(`¿Estás seguro de eliminar el área "${pj.currentArea_id}" y todos sus datos?`)) {
+                        const areaAEliminar = pj.currentArea_id;
+                        delete gameData.dynamicData.worldStorage[areaAEliminar];
+                        // Mover al personaje a la primera área que quede
+                        const nuevaArea = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND")[0];
+                        pj.currentArea_id = nuevaArea;
+                        pj.currentMiniArea_id = Object.keys(gameData.dynamicData.worldStorage[nuevaArea].miniAreas)[0];
+                    }
+                } else if (select.value !== "") {
+                    pj.currentArea_id = select.value;
+                    const primeraMini = Object.keys(gameData.dynamicData.worldStorage[select.value].miniAreas)[0];
+                    pj.currentMiniArea_id = primeraMini || "Inicio";
                 }
+                updateUI();
+            };
 
-                gameData.dynamicData.worldStorage[nueva] = { 
-                    weather: null, 
-                    miniAreas: { "Inicio": [] }, freq: [], occ: [], rare: [] 
-                };
-                pj.currentArea_id = nueva;
-                pj.currentMiniArea_id = "Inicio";
-            }
-        } else if (select.value === "DEL_VAL") {
-            if (areasExistentes.length <= 1) {
-                alert("No puedes eliminar la última área existente.");
-            } else if (confirm(`¿Estás seguro de eliminar el área "${pj.currentArea_id}" y todos sus datos?`)) {
-                const areaAEliminar = pj.currentArea_id;
-                delete gameData.dynamicData.worldStorage[areaAEliminar];
-                // Mover al personaje a la primera área que quede
-                const nuevaArea = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND")[0];
-                pj.currentArea_id = nuevaArea;
-                pj.currentMiniArea_id = Object.keys(gameData.dynamicData.worldStorage[nuevaArea].miniAreas)[0];
-            }
-        } else if (select.value !== "") {
-            pj.currentArea_id = select.value;
-            const primeraMini = Object.keys(gameData.dynamicData.worldStorage[select.value].miniAreas)[0];
-            pj.currentMiniArea_id = primeraMini || "Inicio";
-        }
-        updateUI();
-    };
-
-    select.onchange = guardar;
-    select.onblur = () => updateUI();
-    elemento.innerHTML = '';
-    elemento.appendChild(select);
-    select.focus();
+            select.onchange = guardar;
+            select.onblur = () => updateUI();
+            elemento.innerHTML = '';
+            elemento.appendChild(select);
+            select.focus();
         }
 
         function habilitarEdicionMiniArea(elemento, pjId) {
@@ -888,45 +1101,45 @@ LÓGICA DE MUNDO:
             const select = document.createElement('select');
             minisExistentes.forEach(m => select.add(new Option(m, m)));
             select.add(new Option("--- Acciones ---", ""));
-    select.add(new Option("+ Crear Nueva MiniÁrea...", "NEW_VAL"));
-    select.add(new Option("🗑️ Eliminar MiniÁrea Actual", "DEL_VAL"));
-    select.value = pj.currentMiniArea_id;
+            select.add(new Option("+ Crear Nueva MiniÁrea...", "NEW_VAL"));
+            select.add(new Option("🗑️ Eliminar MiniÁrea Actual", "DEL_VAL"));
+            select.value = pj.currentMiniArea_id;
 
-    const guardar = () => {
-        if (select.value === "NEW_VAL") {
-            let nueva = prompt("Nombre de la nueva MiniÁrea:");
-            if (nueva) {
-                nueva = nueva.trim();
-                const existe = minisExistentes.some(m => m.toLowerCase() === nueva.toLowerCase());
+            const guardar = () => {
+                if (select.value === "NEW_VAL") {
+                    let nueva = prompt("Nombre de la nueva MiniÁrea:");
+                    if (nueva) {
+                        nueva = nueva.trim();
+                        const existe = minisExistentes.some(m => m.toLowerCase() === nueva.toLowerCase());
 
-                if (nueva === "") return;
-                if (existe) {
-                    alert("Error: Ya existe esa miniárea en esta ubicación.");
-                    return;
+                        if (nueva === "") return;
+                        if (existe) {
+                            alert("Error: Ya existe esa miniárea en esta ubicación.");
+                            return;
+                        }
+
+                        areaActual.miniAreas[nueva] = [];
+                        pj.currentMiniArea_id = nueva;
+                    }
+                } else if (select.value === "DEL_VAL") {
+                    if (minisExistentes.length <= 1) {
+                        alert("No puedes eliminar la única miniárea. El área debe tener al menos una.");
+                    } else if (confirm(`¿Eliminar miniárea "${pj.currentMiniArea_id}"?`)) {
+                        delete areaActual.miniAreas[pj.currentMiniArea_id];
+                        pj.currentMiniArea_id = Object.keys(areaActual.miniAreas)[0];
+                    }
+                } else if (select.value !== "") {
+                    pj.currentMiniArea_id = select.value;
                 }
+                updateUI();
+            };
 
-                areaActual.miniAreas[nueva] = [];
-                pj.currentMiniArea_id = nueva;
-            }
-        } else if (select.value === "DEL_VAL") {
-            if (minisExistentes.length <= 1) {
-                alert("No puedes eliminar la única miniárea. El área debe tener al menos una.");
-            } else if (confirm(`¿Eliminar miniárea "${pj.currentMiniArea_id}"?`)) {
-                delete areaActual.miniAreas[pj.currentMiniArea_id];
-                pj.currentMiniArea_id = Object.keys(areaActual.miniAreas)[0];
-            }
-        } else if (select.value !== "") {
-            pj.currentMiniArea_id = select.value;
+            select.onchange = guardar;
+            select.onblur = () => updateUI();
+            elemento.innerHTML = '';
+            elemento.appendChild(select);
+            select.focus();
         }
-        updateUI();
-    };
-
-    select.onchange = guardar;
-    select.onblur = () => updateUI();
-    elemento.innerHTML = '';
-    elemento.appendChild(select);
-    select.focus();
-}
 
         function habilitarEdicionClima(elemento, areaId) {
             const area = gameData.dynamicData.worldStorage[areaId];
@@ -954,6 +1167,42 @@ LÓGICA DE MUNDO:
             elemento.appendChild(select);
             select.focus();
         }
+        function habilitarEdicionElegirIDPj(elemento, pjId, index) {
+            const currentVal = gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id;
+            const pjsYaAgregados = gameData.dynamicData.chars[pjId].detectedCharsNearbyList
+                .map(item => item.nearby_pj_id)
+                .filter(id => id !== currentVal);
+            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
+
+                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
+            });
+
+            const select = document.createElement('select');
+            select.style.padding = "2px";
+            select.style.background = "#222";
+            select.style.color = "#fff";
+
+            todosLosPjs.forEach(id => {
+                const option = new Option(id, id);
+                select.add(option);
+            });
+
+            select.value = currentVal;
+
+            const guardar = () => {
+                const nuevoValor = select.value;
+                gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id = nuevoValor;
+                updateUI();
+            };
+
+            select.onchange = guardar;
+            select.onblur = updateUI; // Si hace clic fuera sin cambiar nada, revierte el select al texto normal
+
+            elemento.innerHTML = '';
+            elemento.appendChild(select);
+            select.focus();
+        }
+
         function habilitarEdicionText(elemento, clave, path) {
             const input = document.createElement('input');
             input.type = 'text';
@@ -978,21 +1227,15 @@ LÓGICA DE MUNDO:
         }
         function habilitarEdicionBoolean(elemento, clave, path, valTrue = "Si", valFalse = "No") {
             const select = document.createElement('select');
-            //const optTrue = new Option(clave === 'fem' ? 'Femenino' : 'SÍ', true);
-            //const optFalse = new Option(clave === 'fem' ? 'Masculino' : 'NO', false);
             const optTrue = new Option(valTrue, true);
             const optFalse = new Option(valFalse, false);
-
             select.add(optTrue);
             select.add(optFalse);
-            select.value = path[clave]; // Mantiene el valor previo por defecto
-
+            select.value = path[clave];
             const guardarBool = () => {
-                // Al ser un select, siempre tendrá un valor, manteniendo el previo si no se cambia
                 path[clave] = (select.value === 'true');
                 updateUI();
             };
-
             select.onblur = guardarBool;
             select.onchange = guardarBool;
             elemento.innerHTML = '';
@@ -1051,6 +1294,360 @@ LÓGICA DE MUNDO:
                     return habilitarEdicionText(elemento, clave, path);
             }
         }
+
+        function agregarPjCercano(pjId) {
+            if (!gameData) return;
+
+            const pjsYaAgregados = (gameData.dynamicData.chars[pjId].detectedCharsNearbyList || []).map(item => item.nearby_pj_id);
+
+            // 1. Obtener las IDs válidas
+            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
+                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
+            });
+
+            // 2. Mostrar la lista de IDs al usuario en un mensaje interactivo
+            const mensaje = `IDs de personajes disponibles:\n- ${todosLosPjs.join('\n- ')}\n\nEscribe exactamente el ID del personaje que deseas añadir:`;
+            const seleccion = prompt(mensaje);
+
+            if (!seleccion) return; // Si cancela, no hace nada
+
+            const idLimpia = seleccion.trim();
+
+            // 3. VALIDACIÓN ESTRICTA: Comprobar si el ID introducido existe en la lista
+            if (!todosLosPjs.includes(idLimpia)) {
+                alert(`🚨 ERROR: El ID "${idLimpia}" no pertenece a ningún personaje registrado en la partida.`);
+                return; // Detiene la creación
+            }
+
+            // 4. Estructura base para el nuevo objeto dentro del array
+            const nuevoPjCercano = {
+                nearby_pj_id: idLimpia,
+                recognized: false,
+                distance: "Cerca"
+            };
+
+            // 5. Insertar en el JSON y actualizar la UI
+            if (!gameData.dynamicData.chars[pjId].detectedCharsNearbyList) {
+                gameData.dynamicData.chars[pjId].detectedCharsNearbyList = [];
+            }
+
+            gameData.dynamicData.chars[pjId].detectedCharsNearbyList.push(nuevoPjCercano);
+            alert(`✅ Añadido "${idLimpia}" a la lista de personajes cercanos.`);
+            updateUI();
+        }
+
+        // Añadir elementos a las listas de Recuerdos y Extras
+        function agregarElementoArrayStringPj(claveLista) {
+            if (!gameData) return;
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+
+            if (!pj[claveLista]) pj[claveLista] = [];
+
+            let msg = `Introduce el nuevo elemento para ${claveLista}:`;
+            let nuevoValor;
+            let texto = prompt(msg);
+            if (!texto) return;
+            nuevoValor = texto.trim();
+
+            pj[claveLista].push(nuevoValor);
+            updateUI();
+        }
+
+        // Eliminar elementos por índice o clave
+        function eliminarElementoArrayStringPj(claveLista, identificador) {
+            if (!gameData) return;
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+            if (confirm("¿Seguro que deseas eliminar este elemento?")) {
+                pj[claveLista].splice(identificador, 1);
+            }
+            updateUI();
+        }
+
+        // Mover elementos arriba o abajo dentro de un array
+        function moverElementoArrayStringPj(claveLista, idx, direccion) {
+            if (!gameData) return;
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+            const lista = pj[claveLista];
+
+            if (!lista) return;
+
+            // Calcular el nuevo índice de destino
+            const nuevoIdx = idx + direccion;
+
+            // Validar límites del array
+            if (nuevoIdx < 0 || nuevoIdx >= lista.length) return;
+
+            // Intercambiar elementos (Destructuring assignment)
+            [lista[idx], lista[nuevoIdx]] = [lista[nuevoIdx], lista[idx]];
+
+            updateUI();
+        }
+
+        // Habilitar edición en línea para textos planos o propiedades
+        function habilitarEdicionArrayStringPj(elemento, claveLista, identificador) {
+            if (!gameData) return;
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+
+            const input = document.createElement('input');
+            input.type = 'text';
+
+            let valorActual = pj[claveLista][identificador];
+            input.value = typeof valorActual === 'object' ? JSON.stringify(valorActual) : valorActual;
+
+            Object.assign(input.style, {
+                width: "80%",
+                background: "#000",
+                color: "#00ff00",
+                border: "1px solid var(--accent)",
+                fontFamily: "monospace"
+            });
+
+            const guardar = () => {
+                let nuevoValor = input.value.trim();
+                if (nuevoValor === "") return updateUI();
+                pj[claveLista][identificador] = nuevoValor;
+                updateUI();
+            };
+
+            input.onblur = guardar;
+            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            elemento.innerHTML = '';
+            elemento.appendChild(input);
+            input.focus();
+        }
+        function habilitarEdicionEspecial(elemento, clave, pjId) {
+            if (!gameData) return;
+            const pj = gameData.dynamicData.chars[pjId];
+            if (!pj) return;
+
+            // Obtener el valor actual formateado de forma legible
+            const valorActual = JSON.stringify(pj[clave], null, 2) ?? "";
+
+            // Creamos un Textarea temporal para la edición interactiva
+            const textarea = document.createElement('textarea');
+            textarea.value = valorActual;
+            textarea.style.width = "100%";
+            textarea.style.height = "120px";
+            textarea.style.background = "#222";
+            textarea.style.color = "#fff";
+            textarea.style.fontFamily = "monospace";
+            textarea.style.border = "1px solid var(--accent)";
+            textarea.style.borderRadius = "4px";
+            textarea.style.padding = "5px";
+
+            const guardarCambios = () => {
+                try {
+                    const nuevoValor = JSON.parse(textarea.value);
+                    if (clave === 'activeEffects' || clave === 'extra') {
+                        if (!Array.isArray(nuevoValor) || nuevoValor.length === 0 || typeof nuevoValor[0] !== 'object' || nuevoValor[0] === null) {
+                            alert("🚨 Formato inválido. No se permiten arrays vacíos []. Debe contener al menos un objeto [{}].");
+                            updateUI();
+                            return;
+                        }
+                    }
+                    pj[clave] = nuevoValor;
+                    alert("¡Campo actualizado con éxito!");
+                } catch (e) {
+                    alert("Error de Sintaxis JSON. Asegúrate de usar comillas dobles y el formato correcto. Ejemplo:\n[{\"name\": \"Efecto\", \"val\": 1}]");
+                }
+                updateUI();
+            };
+
+            // Al perder el foco (clic fuera), intenta guardar
+            textarea.onblur = guardarCambios;
+
+            // Permitir guardar con Ctrl+Enter para comodidad del usuario
+            textarea.onkeydown = (e) => {
+                if (e.key === 'Enter' && e.ctrlKey) {
+                    guardarCambios();
+                }
+            };
+
+            // Reemplazar el texto estático por nuestro cuadro de edición
+            elemento.innerHTML = '';
+            elemento.appendChild(textarea);
+            textarea.focus();
+        }
+
+        // CREAR un objeto siguiendo las reglas de IDs del motor
+        function crearObjetoEnZona(areaId, miniAreaId) {
+            if (!gameData) return;
+
+            // 1. Obtener la ID única de forma segura según la regla nº 5 del motor
+            let nuevoId;
+            let worldState = gameData.dynamicData.worldState;
+
+            if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
+                nuevoId = worldState.reusableObjIds[0]; // Vista previa del ID que se usará
+            } else {
+                nuevoId = worldState.lastGeneratedObjId + 1;
+            }
+
+            // 2. Definir una plantilla visual para que el usuario conozca la estructura básica esperada
+            const plantillaEjemplo = {
+                "n": "Nombre del Objeto",
+                "d": "Descripción detallada...",
+                "q": 1,
+                "propiedadOpcionalCualquiera": "Valor",
+                "items": []
+            };
+
+            const mensajePrompt = `Creando objeto en el Suelo. Se le asignará automáticamente el #ID: ${nuevoId}\n\n` +
+                `Escribe o pega el código JSON con las etiquetas que desees:`;
+
+            const inputUsuario = prompt(mensajePrompt, JSON.stringify(plantillaEjemplo, null, 4));
+
+            if (!inputUsuario) return; // Cancelado por el usuario
+
+            try {
+                // 3. Validar el formato JSON del string introducido
+                const objetoParseado = JSON.parse(inputUsuario);
+
+                if (Array.isArray(objetoParseado)) {
+                    alert("⚠️ Error de validación: Debes introducir un objeto '{}', no una lista '[]'.");
+                    return;
+                }
+
+                // 4. Confirmar y consumir definitivamente la ID del motor original
+                if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
+                    nuevoId = worldState.reusableObjIds.shift();
+                } else {
+                    worldState.lastGeneratedObjId++;
+                    nuevoId = worldState.lastGeneratedObjId;
+                }
+
+                // 5. Forzar la ID calculada para evitar colisiones manuales en el motor
+                objetoParseado.idObj = nuevoId;
+
+                // 6. Asegurar la persistencia en las miniÁreas del worldStorage
+                if (!gameData.dynamicData.worldStorage[areaId]) {
+                    gameData.dynamicData.worldStorage[areaId] = { weather: null, miniAreas: {} };
+                }
+                if (!gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId]) {
+                    gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId] = [];
+                }
+
+                // Push e inyección en el JSON de la simulación
+                gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId].push(objetoParseado);
+
+                alert(`¡Objeto creado correctamente con ID #${nuevoId} y etiquetas personalizadas!`);
+                updateUI();
+
+            } catch (error) {
+                // Validador de formato activo
+                alert("❌ ERROR JSON INVÁLIDO:\n\n" + error.message + "\n\nPor favor, revisa las comas y comillas dobles.");
+            }
+        }
+// CREAR cualquier tipo de dato en el suelo (String, Número, Objeto JSON...)
+function crearCualquierDatoEnSuelo(areaId, miniAreaId) {
+    if (!gameData) return;
+
+    const input = prompt(
+        `➕ CREAR ELEMENTO EN EL SUELO (${miniAreaId})\n\n` +
+        `Puedes escribir un texto normal, o una estructura JSON cruda como:\n` +
+        `- Textos planos: Un texto de prueba cualquiera\n` +
+        `- Objetos manuales: {"probando": "un objeto sin idObj"}\n` +
+        `- Números o Booleanos: 100 o true`
+    );
+
+    if (input === null) return; // Cancelado
+
+    let datoFinal;
+    try {
+        // Intentamos parsear por si el usuario insertó un objeto, array, número o booleano
+        datoFinal = JSON.parse(input);
+    } catch (e) {
+        // Si el parseo falla, asumimos que es una cadena de texto plana (String)
+        datoFinal = input;
+    }
+
+    // Asegurar estructura segura de la miniÁrea
+    if (!gameData.dynamicData.worldStorage[areaId]) {
+        gameData.dynamicData.worldStorage[areaId] = { weather: null, miniAreas: {} };
+    }
+    if (!gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId]) {
+        gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId] = [];
+    }
+
+    // Insertar directamente el dato crudo en el array
+    gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId].push(datoFinal);
+    
+    alert("¡Elemento añadido al suelo!");
+    updateUI();
+}
+
+// EDITAR o ELIMINAR un elemento en base a su posición en la lista del suelo
+function gestionarElementoSuelo(index, areaId, miniAreaId) {
+    const listaSuelo = gameData.dynamicData.worldStorage[areaId]?.miniAreas[miniAreaId];
+    if (!listaSuelo || listaSuelo[index] === undefined) {
+        alert("No se encontró el elemento seleccionado.");
+        return;
+    }
+
+    const valorActual = listaSuelo[index];
+
+    const opcion = prompt(
+        `🌍 EDITOR DE SUELO CRUDO (Posición: ${index})\n` +
+        `Contenido actual: ${JSON.stringify(valorActual)}\n\n` +
+        `Elige una acción:\n` +
+        `1️⃣  Editar este dato por completo\n` +
+        `2️⃣  ELIMINAR este elemento del suelo`, 
+        "1"
+    );
+
+    if (!opcion) return;
+
+    // --- OPCIÓN 1: EDITAR EL DATO COMPLETO ---
+    if (opcion === "1") {
+        const porDefecto = (typeof valorActual === 'object' && valorActual !== null) 
+            ? JSON.stringify(valorActual, null, 4) 
+            : valorActual;
+
+        const nuevoInput = prompt(`Introduce el nuevo valor para la posición ${index}:`, porDefecto);
+        if (nuevoInput === null) return;
+
+        try {
+            listaSuelo[index] = JSON.parse(nuevoInput);
+        } catch (e) {
+            listaSuelo[index] = nuevoInput; // Guarda como string plano si no es JSON válido
+        }
+
+        alert("¡Elemento del suelo actualizado con éxito!");
+        updateUI();
+    } 
+    
+    // --- OPCIÓN 2: ELIMINAR EL DATO ---
+    else if (opcion === "2") {
+        if (confirm(`🗑️ ¿Estás seguro de que deseas eliminar este elemento del suelo?`)) {
+            listaSuelo.splice(index, 1); // Lo remueve físicamente del array por su índice
+            alert("Elemento eliminado del suelo.");
+            updateUI();
+        }
+    } else {
+        alert("❌ Opción no válida.");
+    }
+}
+function moverPosicionSuelo(areaId, miniAreaId, indiceActual, direccion) {
+    const listaSuelo = gameData.dynamicData.worldStorage[areaId]?.miniAreas[miniAreaId];
+    if (!listaSuelo) return;
+
+    // Calcular la nueva posición matemática (indiceActual + 1 o indiceActual - 1)
+    const nuevoIndice = indiceActual + direccion;
+
+    // Validar que el movimiento esté dentro de los límites del array
+    if (nuevoIndice < 0 || nuevoIndice >= listaSuelo.length) return;
+
+    // Intercambiar los elementos en una sola línea usando destructuración de JavaScript
+    [listaSuelo[indiceActual], listaSuelo[nuevoIndice]] = [listaSuelo[nuevoIndice], listaSuelo[indiceActual]];
+
+    // Refrescar los componentes visuales del HTML para ver el cambio en tiempo real
+    updateUI();
+}
+
         const UIComponents = {
             stats: (selectedId, char, infoClima) => `<div class="data-box">
             <h3>📊 Ficha: ID: ${selectedId} | 
@@ -1058,7 +1655,7 @@ LÓGICA DE MUNDO:
             Edad: <span class="editable-val" onclick="habilitarEdicionNumber(this, 'age', gameData.dynamicData.chars['${selectedId}'], 0)">${char.age}</span> | 
             Género: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'fem', gameData.dynamicData.chars['${selectedId}'], 'Femenino ♀', 'Masculino ♂')">${char.fem ? 'Femenino ♀' : 'Masculino ♂'}</span> | 
             Omnipotente: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'omnipotent', gameData.dynamicData.chars['${selectedId}'])">${char.omnipotent ? 'Sí' : 'No'}</span>
-            Contador Esporas Bosque mágico: <span class="editable-val" onclick="habilitarEdicion(this, 'magicForestToxin_h', gameData.dynamicData.chars['${selectedId}'], 0.00, 16.00)">${char.magicForestToxin_h}</span> |
+            Contador Esporas Bosque mágico: <span class="editable-val" onclick="habilitarEdicion(this, 'magicForestToxin_h', gameData.dynamicData.chars['${selectedId}'], 0.00, ${gameData.worldMechanics.magicForestSpores.magicForestSporesImmunity})">${char.magicForestToxin_h}</span> |
             Estado: <span class="editable-val" onclick="habilitarEdicionText(this, 'state', gameData.dynamicData.chars['${selectedId}'])">${char.state}</span></h3>
             <p>📍 
             <span class="editable-val" onclick="habilitarEdicionArea(this, '${selectedId}')"><strong>${char.currentArea_id}</strong></span> > 
@@ -1077,17 +1674,59 @@ LÓGICA DE MUNDO:
                     <span class="editable-val" onclick="habilitarEdicionStatsConDecay(this, '${selectedId}', '${stat}', 0)">${char[stat][0]}</span> / 
                     <span class="editable-val" onclick="habilitarEdicionStatsConDecay(this, '${selectedId}', '${stat}', 1)">${char[stat][1]}</span>
                 </p>`;
-                }).join('')}
+            }).join('')}
                 </div>
         </div>`,
             inventory: (char, localItems) => `<div class="data-box" style="border-left-color: #3498db;">
-            <h3>🎒 Inventario Personal</h3>
-            ${detallar(char.inv, true, "", null)}
-        </div>
-        <div class="data-box" style="border-left-color: #2ecc71;">
-            <h3>📦 Suelo (${char.currentMiniArea_id})</h3>
-            ${localItems.length > 0 ? detallar(localItems, false, "", null) : "<p>Vacío</p>"}
-        </div>`,
+    <h3>🎒 Inventario Personal</h3>
+    ${detallar(char.inv, true, "", null)}
+</div>
+<div class="data-box" style="border-left-color: #2ecc71;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h3 style="margin: 0;">📦 Suelo (${char.currentMiniArea_id})</h3>
+        <button class="btn-sm" style="background: #2ecc71; font-weight: bold; padding: 6px 12px;" 
+                onclick="crearObjetoEnZona('${char.currentArea_id}', '${char.currentMiniArea_id}')">
+            ➕ Crear Objeto (Con idObj generado)
+        </button>
+        <button class="btn-sm" style="background: #2ecc71; font-weight: bold; padding: 6px 12px;" 
+                onclick="crearCualquierDatoEnSuelo('${char.currentArea_id}', '${char.currentMiniArea_id}')">
+            ➕ Crear Elemento Crudo
+        </button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        ${localItems.length > 0 ? localItems.map((item, idx) => {
+            // Evaluamos si puede subir o bajar en la lista
+            const puedeSubir = idx > 0;
+            const puedeBajar = idx < localItems.length - 1;
+
+            // HTML común para los botones de ordenación de esta fila
+            const botonesOrdenacion = `<button class="btn-sm" style="background:#333; border: 1px solid #555; padding: 2px 6px; margin-right:2px; opacity:${puedeSubir ? 1 : 0.2}" 
+            onclick="moverPosicionSuelo('${char.currentArea_id}', '${char.currentMiniArea_id}', ${idx}, -1)" ${!puedeSubir ? 'disabled' : ''}>▲</button>
+    <button class="btn-sm" style="background:#333; border: 1px solid #555; padding: 2px 6px; margin-right:8px; opacity:${puedeBajar ? 1 : 0.2}" 
+            onclick="moverPosicionSuelo('${char.currentArea_id}', '${char.currentMiniArea_id}', ${idx}, 1)" ${!puedeBajar ? 'disabled' : ''}>▼</button>`;
+
+            if (typeof item === 'object' && item !== null) {
+                return `<div class="item-card" style="position:relative; border: 1px dashed #444; padding: 5px; margin-bottom:5px;">
+                    <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; align-items:center;">
+                        ${botonesOrdenacion}
+                        <button class="btn-sm" style="background:#e67e22; padding:2px 6px;" onclick="gestionarElementoSuelo(${idx}, '${char.currentArea_id}', '${char.currentMiniArea_id}')">🛠️</button>
+                    </div>
+                    ${detallar(item, false, "", null, localItems, idx)}
+                </div>`;
+            } else {
+                return `<div class="item-row" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; display:flex; justify-content:space-between; align-items:center;">
+                    <div class="item-info" style="font-family:monospace; color:#00ff00; cursor:pointer;" onclick="gestionarElementoSuelo(${idx}, '${char.currentArea_id}', '${char.currentMiniArea_id}')">
+                        <span style="color:#aaa; font-size:0.85em;">[Índice ${idx}]</span> ${JSON.stringify(item)}
+                    </div>
+                    <div class="item-actions" style="display:flex; align-items:center;">
+                        ${botonesOrdenacion}
+                        <button class="btn-sm" style="background:#e67e22" onclick="gestionarElementoSuelo(${idx}, '${char.currentArea_id}', '${char.currentMiniArea_id}')">🛠️</button>
+                    </div>
+                </div>`;
+            }
+        }).join("") : "<p style='color: #666; font-style: italic;'>Vacío</p>"}
+    </div>
+</div>`,
             world: (dynamicData) => `<div class="data-box" style="border-left-color: #f1c40f;">
             <h3>Escenario Global</h3>
             <p><strong>Dificultad:</strong> 
@@ -1111,22 +1750,104 @@ LÓGICA DE MUNDO:
         <h3 style="color:#9b59b6">🌌 Limbo Global</h3>
         ${detallar(dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global, true, 'LIMBO', null, dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global, -1)} 
     </div>` : ""}`,
-            extra: (char) => `<div class="data-box">
-            <h3>✨ Memorias</h3>
-            ${detallar(char.memories, false, "", null)}
-            <hr>
-            <h3>✨ Habilidades</h3>
-            ${detallar(char.skills, false, "", null)}
-            <hr>
-            <h3>✨ Efectos Activos</h3>
-            ${detallar(char.activeEffects, false, "", null)}
-            <hr>
-            <h3>✨ Personajes Detectados Cerca</h3>
-            ${detallar(char.detectedCharsNearbyList, false, "", null)}
-            <hr>
-            <h3>✨ Algo extra...</h3>
-            ${detallar(char.extra, false, "", null)}
-        </div>`,
+            extra: (char) => {
+                const selectedId = document.getElementById('charSelect').value;
+
+                // Asegurar inicializaciones por si vienen indefinidos en el JSON
+                if (!char.memories) char.memories = [];
+                if (!char.skills) char.skills = [];
+                if (!char.detectedCharsNearbyList) char.detectedCharsNearbyList = [];
+
+                // Renderizador interno para listas de strings con controles de ordenación
+                const renderListaPlana = (lista, claveLista) => {
+                    if (lista.length === 0) return `<p style="color:#666; font-size:0.9em; padding-left:10px;">(Vacío)</p>`;
+                    return lista.map((item, idx) => `
+                        <div class="item-row" style="border-bottom: 1px solid #222; padding: 4px 10px; display:flex; justify-content:space-between; align-items:center;">
+                            <div class="item-info" style="flex-grow: 1;">
+                                <span class="editable-val" style="cursor:pointer;" onclick="habilitarEdicionArrayStringPj(this, '${claveLista}', ${idx})">
+                                    ${item}
+                                </span>
+                            </div>
+                            <div class="item-actions" style="display:flex; gap:3px;">
+                                <button class="btn-sm" style="background:#34495e; padding: 2px 6px;" 
+                                        ${idx === 0 ? 'disabled style="opacity:0.3; background:#222;"' : ''} 
+                                        onclick="moverElementoArrayStringPj('${claveLista}', ${idx}, -1)">🔼</button>
+                                <button class="btn-sm" style="background:#34495e; padding: 2px 6px;" 
+                                        ${idx === lista.length - 1 ? 'disabled style="opacity:0.3; background:#222;"' : ''} 
+                                        onclick="moverElementoArrayStringPj('${claveLista}', ${idx}, 1)">🔽</button>
+                                <button class="btn-sm" style="background:#e74c3c; padding: 2px 6px;" onclick="eliminarElementoArrayStringPj('${claveLista}', ${idx})">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                };
+                let cercanosHtml = "";
+                if (char.detectedCharsNearbyList.length === 0) {
+                    cercanosHtml = `<p style="color:#666; font-size:0.9em; padding-left:10px;">(Ningún personaje cerca)</p>`;
+                } else {
+                    cercanosHtml = char.detectedCharsNearbyList.map((item, idx) => `
+                        <div class="item-row" style="border-bottom: 1px solid #222; padding: 4px 10px; display:flex; justify-content:space-between; align-items:center;">
+                            <div class="item-info" style="flex-grow: 1;">
+                                <strong>ID:</strong> <span class="editable-val" onclick="habilitarEdicionElegirIDPj(this, '${selectedId}', ${idx})">${item.nearby_pj_id}</span> | 
+                                <strong>Reconocido:</strong> <span class="editable-val" style="cursor:pointer; text-decoration:underline;" onclick="gameData.dynamicData.chars['${selectedId}'].detectedCharsNearbyList[${idx}].recognized = !gameData.dynamicData.chars['${selectedId}'].detectedCharsNearbyList[${idx}].recognized; updateUI();">${item.recognized ? 'Sí' : 'No'}</span>
+                            </div>
+                            <div class="item-actions" style="display:flex; gap:3px;">
+                                <button class="btn-sm" style="background:#34495e; padding: 2px 6px;" 
+                                        ${idx === 0 ? 'disabled style="opacity:0.3; background:#222;"' : ''} 
+                                        onclick="moverElementoArrayStringPj('detectedCharsNearbyList', ${idx}, -1)">🔼</button>
+                                <button class="btn-sm" style="background:#34495e; padding: 2px 6px;" 
+                                        ${idx === char.detectedCharsNearbyList.length - 1 ? 'disabled style="opacity:0.3; background:#222;"' : ''} 
+                                        onclick="moverElementoArrayStringPj('detectedCharsNearbyList', ${idx}, 1)">🔽</button>
+                                <button class="btn-sm" style="background:#e74c3c; padding: 2px 6px;" onclick="eliminarElementoArrayStringPj('detectedCharsNearbyList', ${idx})">🗑️</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                return `<div class="data-box" style="border-left-color: #9b59b6;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                        <h3>✨ Memorias (Recuerdos)</h3>
+                        <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarElementoArrayStringPj('memories')">➕ Añadir</button>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.15); border-radius:4px; margin-bottom:15px;">
+                        ${renderListaPlana(char.memories, 'memories')}
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                        <h3>⚔️ Habilidades (Skills)</h3>
+                        <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarElementoArrayStringPj('skills')">➕ Añadir</button>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.15); border-radius:4px; margin-bottom:15px;">
+                        ${renderListaPlana(char.skills, 'skills')}
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                        <h3>🧪 Efectos Activos</h3>
+                    </div>
+                    <div>
+    <span class="editable-val" style="cursor:pointer; border-bottom:1px dashed #555;" 
+          onclick="habilitarEdicionEspecial(this, 'activeEffects', '${selectedId}')">
+        ${char.activeEffects ? JSON.stringify(char.activeEffects) : "No definido ( Formato [ { } ] )"}
+    </span>
+</div>        
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                        <h3>👁️ Personajes Detectados Cerca</h3>
+                        <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarPjCercano('${selectedId}')">➕ Añadir</button>
+                    </div>
+                    <div style="background:rgba(0,0,0,0.15); border-radius:4px; margin-bottom:15px;">
+                        ${cercanosHtml}
+                    </div>
+                    
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                        <h3>⚙️ Algo extra</h3>
+                    </div>
+                    <div>
+    <span class="editable-val" style="cursor:pointer; border-bottom:1px dashed #555;" 
+          onclick="habilitarEdicionEspecial(this, 'extra', '${selectedId}')">
+        ${char.extra ? JSON.stringify(char.extra) : "No definido ( Formato [ { } ] )"}
+    </span>
+</div>
+                </div>`;
+            },
             prompt: (selectedId, dynamicData) => {
                 if (selectedId !== dynamicData.worldState.turnActionPlayer_id) {
                     return `<div style="text-align:center; padding: 20px; opacity: 0.8;">

@@ -32,7 +32,7 @@
             "energy": "cannot move"
         },
         "magicForestSpores": {
-            "note":"Only in Magic Forest. 'states' in order ('magicForestToxin_h', 'stateThreshold_h')",
+            "note": "Only in Magic Forest. 'states' in order ('magicForestToxin_h', 'stateThreshold_h')",
             "magicForestSporesImmunity": 16.00,
             "stateThreshold_h": 4,
             "states": [
@@ -80,7 +80,7 @@
                 "omnipotent": "b, d false",
                 "currentArea_id": "s",
                 "currentMiniArea_id": "s",
-                "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h), range: 0.00 - 'magicForestSporesImmunity'. Don't forget States from 'magicForestSpores'",
+                "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h) REGULAR EXPRESSION / LOGIC: 'magicForestToxin_h' tracks vulnerability to spores. If this key DOES NOT EXIST in a character, they are permanently IMMUNE to the Magic Forest spores. Only add this key with a numeric value (starting at 0.00) for chars such as new or vulnerable outsider humans.",
                 "state": "s",
                 "food": [
                     "dec (current)",
@@ -131,7 +131,9 @@
                     "d"
                 ],
                 "activeEffects": [
-                    "object (e.g.: { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'})"
+                    {
+                        "key": "val (e.g.: { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'}, {'n': 'another random effect (etc keys and vals)'})"
+                    }
                 ],
                 "skills": [
                     "s (e.g.: fantasy seal, sword)"
@@ -139,7 +141,9 @@
                 "memories": [
                     "s (e.g.: left my Backpack at Marisa's house -> create that miniArea in area magic forest if it doesn't exist, same with new Areas)"
                 ],
-                "IAaddMemories":[""],
+                "IAaddMemories": [
+                    ""
+                ],
                 "inv": [
                     "o, def clothes worn. If items available (e.g., weapons, Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
                     "items like Backpack if not carried, use worldStorage with Same Area and miniArea with this char and leave the backback's info there until is carried again, etc",
@@ -155,7 +159,9 @@
                     }
                 ],
                 "extra": [
-                    "o, other important details"
+                    {
+                        "Key": "Val (other important details)"
+                    }
                 ],
                 "tplReimuDefault": {
                     "idReimu": {
@@ -217,7 +223,7 @@
                             4000
                         ],
                         "activeEffects": [
-                            ""
+                            {}
                         ],
                         "skills": [
                             "Volar, Spells, Armas",
@@ -226,7 +232,9 @@
                         "memories": [
                             "Conoce a casi todos, a los nuevos humanos perdidos no']"
                         ],
-                        "IAaddMemories":[""],
+                        "IAaddMemories": [
+                            ""
+                        ],
                         "inv": [
                             {
                                 "idObj": "Next obj ID available",
@@ -321,9 +329,6 @@
                     5000,
                     5000
                 ],
-                "activeEffects": [
-                    {}
-                ],
                 "skills": [
                     "Esfera mágica básica",
                     "Volar",
@@ -336,7 +341,9 @@
                     "Este bosque en donde desperté se siente hostil.",
                     "Siento que tengo habilidades mágicas, pero no sé quién más habita este bosque."
                 ],
-                "IAaddMemories":[""],
+                "IAaddMemories": [
+                    ""
+                ],
                 "inv": [
                     {
                         "idObj": 0,
@@ -380,15 +387,6 @@
                             }
                         ]
                     }
-                ],
-                "detectedCharsNearbyList": [
-                    {
-                        "nearby_pj_id": null,
-                        "recognized": false
-                    }
-                ],
-                "extra": [
-                    {}
                 ]
             }
         },
@@ -396,8 +394,7 @@
             "SYSTEM_LOST_FOUND": {
                 "note": "Contenedor de objetos que han desaparecido de la vista del jugador pero existen en el mundo.",
                 "miniAreas": {
-                    "Contenedor_Global": [
-                    ]
+                    "Contenedor_Global": []
                 }
             },
             "MagicForest": {
@@ -430,7 +427,12 @@
                     "Hecatia"
                 ],
                 "miniAreas": {
-                    "ZonaArboles1": [],
+                    "ZonaArboles1": [
+                        "una descripcion o texto random de prueba, textos como este quisiera poder editar, crear y eliminar",
+                        {
+                            "probando" : "otro tipo de dato que quisiera editar, crear y eliminar, sin tener idObj"
+                        }
+                    ],
                     "AlrededoresCasaMarisa": [],
                     "EntradaPrincipalCasaMarisa": [],
                     "AlrededoresCasaAlice": [],

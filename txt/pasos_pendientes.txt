@@ -14,6 +14,37 @@ Evitar repetir código, organizar mejor, hacerlo corto y entendible, seguir buen
 Personalización de valores existentes:
 Crear interfaz amigable para editar los valores en general de la partida, con su validador de integridad (ej: valor actual no supere al máximo). Probablemente con la opción de ver sus valores por defecto en cada dificultad en cada valor, dando la opción de aplicar ese valor por defecto en uno o varios valores a elección del jugador
 Habría que pensar si hacerlo en index.html o en otro archivo...
+
+Crear sección para Areas y miniAreas, con la personalización existente añadiendo personalizar el contenido de la frecuencia de los npcs en todas las areas existentes
+*
+
+*
+Varios jugadores en misma partida:
+Contenido de "lastNarration" guardarlo en todos los jugadores (no npcs), opcionalmente en una lista que guarda las últimas 3 de cada jugador para "memoria reciente detallada" para la IA.
+Actualizar turnActionPlayer_id en SyncJSON.html sin delegarlo a la IA (como los decays)
+Testear que sea jugable
+*
+
+*
+Considerar:
+
+Eliminar "State", detectar estados por los stats o 'activeEffects' ej:
+Estados como Asustado, Furioso, Alerta detectarlos en las memorias recientes del personaje (memories)
+*
+
+*
+Decay y regeneración por hora:
+Añadir un tercer valor a los stats de los personajes (decayHour), -1 sería restar 1 en una hora, +1 al revés. Aplicarlo en SyncJSON.html según el tiempo transcurrido desde la última acción en todos los personajes cuyo valor no sea 0 o null el valor del decayHour
+*
+
+*
+IDS objetos:
+Generarlos mediante javascript automáticamente, no delegar a la IA su creación. No olvidar la lógica de destrucción de objetos (reusableObjIds) e intentar no mostrar ambas variables en el prompt (lastGeneratedObjId, reusableObjIds)
+*
+
+*
+Ahorro Tokens viables:
+Por ejemplo: valores por defecto a keys por defecto inexistentes (ej: si no hay 'activeEffects' está vacío, si no hay 'magicForestToxin_h' el valor es inmune. Si el valor de 'magicForestToxin_h' es negativo = no respirando esporas, si es positivo está respirando esporas, el número es el mismo en ambos casos, es para evitar crear un booleano por cada pj)
 *
 
 *
@@ -29,23 +60,6 @@ Si las dificultades se hicieron como plantilla, eliminar el rastro innecesario (
 *
 Mecánica hongos bosque mágico:
 retocar tiempos estado y añadir órdenes de estado repetibles que acaben en inmune (irrepetible al final)
-*
-
-*
-Decay y regeneración por hora:
-Añadir un tercer valor a los stats de los personajes (decayHour), -1 sería restar 1 en una hora, +1 al revés. Aplicarlo en SyncJSON.html según el tiempo transcurrido desde la última acción en todos los personajes cuyo valor no sea 0 o null el valor del decayHour
-*
-
-*
-IDS objetos:
-Generarlos mediante javascript automáticamente, no delegar a la IA su creación. No olvidar la lógica de destrucción de objetos (reusableObjIds) e intentar no mostrar ambas variables en el prompt (lastGeneratedObjId, reusableObjIds)
-*
-
-*
-Varios jugadores en misma partida:
-Contenido de "lastNarration" guardarlo en todos los jugadores (no npcs), opcionalmente en una lista que guarda las últimas 3 de cada jugador para "memoria reciente detallada" para la IA.
-Actualizar turnActionPlayer_id en SyncJSON.html sin delegarlo a la IA (como los decays)
-Testear que sea jugable
 *
 
 *
@@ -90,12 +104,6 @@ Hacer pruebas generales.
 Crear un trailer.
 Publicidad...
 *
-
-
-
-
-
-
 
 
 
