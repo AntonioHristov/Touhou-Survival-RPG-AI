@@ -54,7 +54,8 @@
             "turnActionPlayer_id": "P1",
             "gameLang": "ES",
             "currDiff": "Easy",
-            "lastGeneratedObjId": 7,
+            "lastGeneratedObjId": 8,
+            "minutos_transcurridos_turno": null,
             "reusableObjIds": [],
             "time": {
                 "day": 1,
@@ -67,8 +68,89 @@
                     "2. Intentar elevarme un poco (Volar) para ver si hay algún camino o estructura cerca.",
                     "3. Permanecer en silencio y observar el entorno buscando señales de vida (NPCs)."
                 ],
-                "OptChosen": ""
+                "OptChosen": "a"
             }
+        },
+        "additionalIdsToSeeInfoForAI": {
+            "chars": [],
+            "worldStorage": []
+        },
+        "aiActions": {
+            "why": "Brief narrative justification of the actions taken during the turn.",
+            "sequence": [
+                {
+                    "op": "string (edit | editObj | create | move | delete | memory | editRadar)",
+                    "targetId": "numeric (required for 'editObj', alternative for 'delete' or 'move' to target items directly by their idObj)",
+                    "updates": "object (required ONLY for 'editObj', e.g., {\"q\": 2, \"det\": \"Equipped\"})",
+                    "path": [
+                        "array",
+                        "of",
+                        "strings/numbers",
+                        "for",
+                        "generic",
+                        "target",
+                        "path"
+                    ],
+                    "value": "any (required ONLY for generic 'edit' operation)",
+                    "to": [
+                        "array",
+                        "for",
+                        "destination",
+                        "path"
+                    ],
+                    "key": "string (optional, dictionary key for 'create' operation)",
+                    "isObj": "boolean (optional, if true autogenerates incremental idObj)",
+                    "data": "object (required ONLY for 'create' operation)",
+                    "charId": "string (required ONLY for 'memory' operation)",
+                    "texts": [
+                        "array",
+                        "of",
+                        "strings",
+                        "for",
+                        "new",
+                        "memories"
+                    ],
+                    "addChars": [
+                        "array",
+                        "of",
+                        "strings",
+                        "IDs",
+                        "of",
+                        "NPCs",
+                        "to",
+                        "spy"
+                    ],
+                    "addWorld": [
+                        "array",
+                        "of",
+                        "strings",
+                        "IDs",
+                        "of",
+                        "subAreas",
+                        "to",
+                        "spy"
+                    ],
+                    "removeChars": [
+                        "array",
+                        "of",
+                        "strings",
+                        "IDs",
+                        "to",
+                        "stop",
+                        "spying"
+                    ],
+                    "removeWorld": [
+                        "array",
+                        "of",
+                        "strings",
+                        "IDs",
+                        "to",
+                        "stop",
+                        "spying"
+                    ]
+                }
+            ],
+            "note_sequence": "CRITICAL: Use 'targetId' and 'editObj' instead of item array indexes in 'path' to avoid index shift bugs when deleting or modifying items."
         },
         "chars": {
             "id_tplMANDATORY": {
@@ -78,12 +160,11 @@
                 "isPlayer": "boolean",
                 "fem": "b",
                 "omnipotent": "b, d false",
-                "currentArea_id": "s",
-                "currentMiniArea_id": "s",
+                "currentSubArea_id": "s",
                 "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h) REGULAR EXPRESSION / LOGIC: 'magicForestToxin_h' tracks vulnerability to spores. If this key DOES NOT EXIST in a character, they are permanently IMMUNE to the Magic Forest spores. Only add this key with a numeric value (starting at 0.00) for chars such as new or vulnerable outsider humans.",
                 "state": "s",
                 "food": [
-                    "dec (current)",
+                    "d (current)",
                     "d (max), human d 500"
                 ],
                 "water": [
@@ -132,22 +213,31 @@
                 ],
                 "activeEffects": [
                     {
-                        "key": "val (e.g.: { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'}, {'n': 'another random effect (etc keys and vals)'})"
+                        "key": "val (e.g { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'}, {'n': 'another random effect (etc keys and vals)'})"
                     }
                 ],
                 "skills": [
-                    "s (e.g.: fantasy seal, sword)"
+                    "s (e.g fantasy seal, sword)"
                 ],
                 "memories": [
-                    "s (e.g.: left my Backpack at Marisa's house -> create that miniArea in area magic forest if it doesn't exist, same with new Areas)"
+                    "s (e.g left my Backpack at Marisa's house -> create that subArea in area magic forest if it doesn't exist, same with new Areas)"
                 ],
-                "IAaddMemories": [
-                    ""
-                ],
+                "appearance": {
+                    "height_m": "d e.g 1.75",
+                    "hair": {
+                        "color": "s e.g Blanco",
+                        "style": "s e.g Largo con una trenza lateral"
+                    },
+                    "eyes": "s e.g Rojo carmesí",
+                    "distinguishing_features": [
+                        "s e.g Orejas de conejo",
+                        "s (infinite string values in Array) e.g Una pequeña cicatriz en la mejilla izquierda"
+                    ],
+                    "base_description": "s e.g Un humanoide de aspecto joven que viste ropas desgastadas por el viaje."
+                },
                 "inv": [
-                    "o, def clothes worn. If items available (e.g., weapons, Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
-                    "items like Backpack if not carried, use worldStorage with Same Area and miniArea with this char and leave the backback's info there until is carried again, etc",
-                    "Don't forget idObj in every object. reusableObjIds (first value and remove it from the list), if it's empty then lastGeneratedObjId +1 and update it. This is next obj ID available",
+                    "o, def clothes worn. If items available (e.g. Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
+                    "items like Backpack if not carried, use worldStorage with Same subArea with this char and leave the backback's info there until is carried again, etc",
                     {
                         "weight_penalization": "food, energy, spd (Try low penalization)"
                     }
@@ -170,8 +260,7 @@
                         "isPlayer": false,
                         "fem": true,
                         "omnipotent": false,
-                        "currentArea_id": null,
-                        "currentMiniArea_id": null,
+                        "currentSubArea_id": null,
                         "magicForestToxin_h": 16,
                         "state": null,
                         "food": [
@@ -232,31 +321,37 @@
                         "memories": [
                             "Conoce a casi todos, a los nuevos humanos perdidos no']"
                         ],
-                        "IAaddMemories": [
-                            ""
-                        ],
+                        "appearance": {
+                            "height_m": 1.58,
+                            "hair": {
+                                "color": "Marrón oscuro",
+                                "style": "Largo, recogido en una gran coleta trasera con un lazo rojo llamativo y mechones que enmarcan su rostro"
+                            },
+                            "eyes": "Marrón teñido de rojo purpúreo",
+                            "distinguishing_features": [
+                                "Patillas largas sujetas con tubos para el cabello (decoraciones de miko)",
+                                "Expresión habitualmente serena o ligeramente apática"
+                            ],
+                            "base_description": "Una joven de complexión delgada y movimientos sumamente fluidos, casi como si flotara al caminar. Viste ropas tradicionales de miko modificadas."
+                        },
                         "inv": [
                             {
-                                "idObj": "Next obj ID available",
+                                "idObj": "null (Next obj ID available)",
                                 "n": "Hakurei Shrine Maiden (miko) outfit, customized and distinctive, predominantly red and white",
                                 "det": "Equipado"
                             },
                             {
-                                "weapons": [
-                                    {
-                                        "idObj": "Next obj ID available",
-                                        "n": "Gohei"
-                                    },
-                                    {
-                                        "idObj": "Next obj ID available",
-                                        "n": "Yin-Yang Orb"
-                                    },
-                                    {
-                                        "idObj": "Next obj ID available",
-                                        "n": "Ofuda",
-                                        "q": 5
-                                    }
-                                ]
+                                "idObj": "null (Next obj ID available)",
+                                "n": "Gohei"
+                            },
+                            {
+                                "idObj": "null (Next obj ID available)",
+                                "n": "Yin-Yang Orb"
+                            },
+                            {
+                                "idObj": "null (Next obj ID available)",
+                                "n": "Ofuda",
+                                "q": 5
                             }
                         ],
                         "detectedCharsNearbyList": [
@@ -277,8 +372,7 @@
                 "isPlayer": true,
                 "fem": false,
                 "omnipotent": false,
-                "currentArea_id": "MagicForest",
-                "currentMiniArea_id": "ZonaArboles1",
+                "currentSubArea_id": "MarisaKitchen",
                 "magicForestToxin_h": 0,
                 "state": "Normal",
                 "food": [
@@ -341,9 +435,19 @@
                     "Este bosque en donde desperté se siente hostil.",
                     "Siento que tengo habilidades mágicas, pero no sé quién más habita este bosque."
                 ],
-                "IAaddMemories": [
-                    ""
-                ],
+                "appearance": {
+                    "height_m": 1.75,
+                    "hair": {
+                        "color": "Castaño",
+                        "style": "Corto y ligeramente alborotado"
+                    },
+                    "eyes": "Comunes",
+                    "distinguishing_features": [
+                        "Aspecto y vestimenta que desentonan completamente con la estética tradicional de Gensokyo",
+                        "Mirada de desconcierto o alerta constante ante el entorno"
+                    ],
+                    "base_description": "Un joven humano de complexión y altura promedio para el Mundo Exterior, vistiendo ropa casual moderna apta para el día a día."
+                },
                 "inv": [
                     {
                         "idObj": 0,
@@ -392,132 +496,337 @@
         },
         "worldStorage": {
             "SYSTEM_LOST_FOUND": {
-                "note": "Contenedor de objetos que han desaparecido de la vista del jugador pero existen en el mundo.",
-                "miniAreas": {
+                "name": "Contenedor Global del Limbo",
+                "desc": "Espacio seguro del sistema para objetos huérfanos o desterrados.",
+                "subAreas": {
                     "Contenedor_Global": []
                 }
             },
             "MagicForest": {
-                "weather": "Niebla densa",
+                "name": "Magic Forest",
+                "desc": "Dense forest. Spores affect ground level. High altitude allows clean flight.",
+                "weather": "Dense mist",
                 "freq": [
                     "Marisa",
                     "Alice",
-                    "Rinnosuke",
+                    "Three Fairies of Light",
                     "Cirno",
-                    "Daiyousei",
                     "Rumia",
+                    "Wriggle",
                     "Mystia",
-                    "wriggle",
-                    "Generic Fairies and minor Youkais"
+                    "Daiyousei",
+                    "Generic Magicians",
+                    "Minor Youkais (Miasma-born)",
+                    "Hostile Forest Fairies"
                 ],
                 "occ": [
-                    "Generic Outsider Humans",
-                    "Yukari",
-                    "Ran",
+                    "Rinnosuke (Ground near paths only)",
                     "Reimu",
-                    "Sakuya",
-                    "Youmu",
-                    "Mokou"
+                    "Aya (Flying above canopy)",
+                    "Mamizou",
+                    "Outsider Humans (Lost on ground)"
                 ],
                 "rare": [
-                    "Humans (Village)",
-                    "Scarlet Residents",
-                    "Eirin",
-                    "Kaguya",
-                    "Hecatia"
+                    "Yukari",
+                    "Ran",
+                    "Mokou (Wandering on ground)",
+                    "Patchouli (High altitude flight only, never lands)",
+                    "Sakuya",
+                    "Youmu",
+                    "Human Villagers (Gatherers on ground)",
+                    "Nitori"
                 ],
-                "miniAreas": {
-                    "ZonaArboles1": [
-                        "una descripcion o texto random de prueba, textos como este quisiera poder editar, crear y eliminar",
-                        {
-                            "probando" : "otro tipo de dato que quisiera editar, crear y eliminar, sin tener idObj"
+                "subAreas": {
+                    "MFTreeZone1": {
+                        "name": "Dense Trees 1",
+                        "desc": "Deep forest section. Thick canopy blocks most sunlight.",
+                        "items": [
+                            {
+                                "idObj": 8,
+                                "n": "Objeto temporal para pruebas (se eliminará pronto)",
+                                "q": 500
+                            }
+                        ]
+                    },
+                    "MarisaHouse": {
+                        "name": "Marisa House",
+                        "weather": "Sheltered",
+                        "freq": [
+                            "Marisa"
+                        ],
+                        "occ": [
+                            "Reimu",
+                            "Alice",
+                            "Three Fairies of Light"
+                        ],
+                        "rare": [
+                            "Rinnosuke",
+                            "Patchouli",
+                            "Outsider Humans"
+                        ],
+                        "subAreas": {
+                            "MarisaYard": {
+                                "name": "Surroundings",
+                                "desc": "Weedy yard surrounding the wooden house.",
+                                "items": []
+                            },
+                            "MarisaEntrance": {
+                                "name": "Main Entrance",
+                                "desc": "Front porch cluttered with discarded magical experiments.",
+                                "items": []
+                            },
+                            "MarisaInterior": {
+                                "name": "House Interior",
+                                "desc": "Messy living space packed with books and items.",
+                                "subAreas": {
+                                    "MarisaKitchen": {
+                                        "name": "Kitchen",
+                                        "desc": "Cauldron bubbling here. Smells of herbs and mushrooms.",
+                                        "items": []
+                                    },
+                                    "MarisaBedroom": {
+                                        "name": "Bedroom",
+                                        "desc": "Marisa's private room. Dusty grimoires piled everywhere.",
+                                        "items": []
+                                    }
+                                }
+                            }
                         }
-                    ],
-                    "AlrededoresCasaMarisa": [],
-                    "EntradaPrincipalCasaMarisa": [],
-                    "AlrededoresCasaAlice": [],
-                    "EntradaPrincipalCasaAlice": [],
-                    "AlrededoresKourindou": [],
-                    "EntradaPrincipalKourindou": []
+                    },
+                    "AliceHouse": {
+                        "name": "Alice's House",
+                        "weather": "Sheltered",
+                        "freq": [
+                            "Alice"
+                        ],
+                        "occ": [
+                            "Marisa",
+                            "Reimu"
+                        ],
+                        "rare": [
+                            "Rinnosuke",
+                            "Shanghai Doll",
+                            "Hourai Doll",
+                            "Outsider Humans"
+                        ],
+                        "subAreas": {
+                            "AliceYard": {
+                                "name": "Surroundings",
+                                "desc": "A neat, European-style garden filled with silent dolls.",
+                                "items": []
+                            },
+                            "AliceEntrance": {
+                                "name": "Main Entrance",
+                                "desc": "An elegant door. The quiet atmosphere feels almost suspicious.",
+                                "items": []
+                            },
+                            "AliceInterior": {
+                                "name": "House Interior",
+                                "desc": "Cozy western house. Shelves are packed with handmade dolls and sewing strings.",
+                                "items": []
+                            }
+                        }
+                    },
+                    "Kourindou": {
+                        "name": "Kourindou Shop",
+                        "weather": "Sheltered",
+                        "freq": [
+                            "Rinnosuke"
+                        ],
+                        "occ": [
+                            "Marisa",
+                            "Reimu",
+                            "Alice",
+                            "Human Villagers"
+                        ],
+                        "rare": [
+                            "Outsider Humans",
+                            "Nitori",
+                            "Yukari"
+                        ],
+                        "subAreas": {
+                            "KourindouYard": {
+                                "name": "Surroundings",
+                                "desc": "The edge of the forest. Sunnier and less dense than the deep woods.",
+                                "items": []
+                            },
+                            "KourindouEntrance": {
+                                "name": "Main Entrance",
+                                "desc": "A traditional shop front with a curious sign. Strange exterior items lay nearby.",
+                                "items": []
+                            },
+                            "KourindouInterior": {
+                                "name": "Shop Interior",
+                                "desc": "An antique shop packed with mysterious, unidentifiable Outside World artifacts.",
+                                "items": []
+                            }
+                        }
+                    }
                 }
             },
             "HakureiShrine": {
-                "weather": null,
+                "name": "Hakurei Shrine",
+                "weather": "Clear",
                 "freq": [
                     "Reimu",
                     "Marisa",
-                    "Yukari",
                     "Aunn"
                 ],
                 "occ": [
-                    "Various Youkai",
                     "Sakuya",
+                    "Remilia",
                     "Suika",
-                    "Alice"
+                    "Alice",
+                    "Yukari",
+                    "Various Youkai"
                 ],
                 "rare": [
-                    "Generic Outsider Humans",
-                    "Gods",
-                    "Tenshi"
+                    "Ran",
+                    "Tenshi",
+                    "Minor Gods",
+                    "Outsider Humans"
                 ],
-                "miniAreas": {
-                    "Alrededores": [],
-                    "EntradaPrincipal": []
+                "subAreas": {
+                    "ShrineYard": {
+                        "name": "Shrine Grounds",
+                        "desc": "The main courtyard of the shrine. Peaceful, quiet, and surrounded by ancient cherry blossom trees.",
+                        "items": []
+                    },
+                    "ShrineEntrance": {
+                        "name": "Torii Gate",
+                        "desc": "The iconic red wooden gate marking the boundary between worlds. Long stone stairs lead down to the mountain base.",
+                        "items": []
+                    },
+                    "ShrineInterior": {
+                        "name": "Shrine Interior",
+                        "desc": "The main tatami room. A donation box sits near the entrance, perpetually empty. Smells of green tea.",
+                        "items": []
+                    },
+                    "ShrineStorage": {
+                        "name": "Storage Shed",
+                        "desc": "A dusty wooden shed behind the shrine. Filled with old purification rods, brooms, and forgotten festival gear.",
+                        "items": []
+                    }
                 }
             },
             "ScarletMans": {
-                "weather": null,
+                "name": "Scarlet Devil Mansion",
+                "weather": "Overcast",
                 "freq": [
                     "Remilia",
-                    "Flandre",
                     "Sakuya",
                     "Patchouli",
                     "Meiling",
                     "Koakuma",
-                    "Fairies (Sirvientas e intrusas)",
-                    "Marisa"
+                    "Maid Fairies"
                 ],
                 "occ": [
+                    "Marisa",
                     "Reimu",
-                    "Yukari",
                     "Aya",
-                    "Gensokyo characters (Eventos)"
+                    "Various Youkai"
                 ],
                 "rare": [
-                    "Humans (General)",
-                    "Distant residents (Yuyuko)"
+                    "Yukari",
+                    "Yuyuko",
+                    "Outsider Humans",
+                    "Human Villagers",
+                    "Flandre"
                 ],
-                "miniAreas": {
-                    "Alrededores": [],
-                    "EntradaPrincipal": [],
-                    "Basement": []
+                "subAreas": {
+                    "ScarletGate": {
+                        "name": "Main Gate",
+                        "desc": "The grand entrance to the mansion grounds. Meiling usually guards this post, occasionally napping.",
+                        "items": []
+                    },
+                    "ScarletYard": {
+                        "name": "Surroundings",
+                        "desc": "A vast, eerie garden covered in mist from the nearby lake. Dead trees and stone pathways line the estate.",
+                        "items": []
+                    },
+                    "ScarletInterior": {
+                        "name": "Mansion Interior",
+                        "weather": "Sheltered",
+                        "desc": "An opulent, scarlet-themed European palace. Maid fairies scurry around endlessly through the long corridors.",
+                        "subAreas": {
+                            "ScarletLibrary": {
+                                "name": "Voile Library",
+                                "desc": "A massive subterranean library. The air smells of old paper, ink, and intense magic. Patchouli and Koakuma reside here.",
+                                "items": []
+                            },
+                            "ScarletBasement": {
+                                "name": "Basement",
+                                "desc": "A dark, heavily reinforced dungeon. A strange, destructive magical presence seals this place.",
+                                "freq": [
+                                    "Flandre"
+                                ],
+                                "occ": [
+                                    "Sakuya",
+                                    "Remilia"
+                                ],
+                                "rare": [
+                                    "Marisa"
+                                ],
+                                "items": []
+                            }
+                        }
+                    }
                 }
             },
             "HumVill": {
-                "weather": null,
+                "name": "Human Village",
+                "weather": "Clear",
                 "freq": [
                     "Keine",
-                    "Hieda",
+                    "Akyuu",
                     "Kosuzu",
-                    "Humans (General)"
+                    "Human Villagers"
                 ],
                 "occ": [
                     "Reimu",
                     "Marisa",
-                    "Yukari",
-                    "Mamizou",
                     "Mokou",
-                    "Byakuren"
+                    "Mamizou",
+                    "Byakuren",
+                    "Yukari"
                 ],
                 "rare": [
-                    "Hostile Youkai",
-                    "Kanako",
+                    "Nitori",
                     "Eirin",
-                    "Underworld Residents"
+                    "Kanako",
+                    "Hostile Youkai",
+                    "Underworld Residents",
+                    "Outsider Humans (Sheltered/Terrified)"
                 ],
-                "miniAreas": {
-                    "Alrededores": [],
-                    "EntradaPrincipal": []
+                "subAreas": {
+                    "VillageGate": {
+                        "name": "Main Entrance",
+                        "desc": "The heavily guarded wooden gates of the village. Guards watch the road for any incoming youkai.",
+                        "items": []
+                    },
+                    "VillageSquare": {
+                        "name": "Village Square",
+                        "desc": "The bustling heart of the human population. Markets, street food stalls, and taverns line the dirt roads.",
+                        "items": []
+                    },
+                    "SuzunaanBookstore": {
+                        "name": "Suzunaan Bookstore",
+                        "weather": "Sheltered",
+                        "desc": "A cozy rental bookstore owned by Kosuzu. Shelves hold rare Outside World books and dangerous demon scrolls.",
+                        "items": []
+                    },
+                    "AkyuuEstate": {
+                        "name": "Hieda Manor",
+                        "weather": "Sheltered",
+                        "desc": "The massive, traditional estate of the wealthy Hieda clan. Quiet hallways filled with historical archives.",
+                        "items": []
+                    },
+                    "VillageSchool": {
+                        "name": "Village School",
+                        "weather": "Sheltered",
+                        "desc": "A humble wooden classroom where Keine teaches human children history and myths during the day.",
+                        "items": []
+                    }
                 }
             }
         }

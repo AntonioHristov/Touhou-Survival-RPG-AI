@@ -45,7 +45,13 @@
 
         textarea.dragover {
             border-color: #f1c40f;
-            background: #363636;
+            background: #3a3a3a;
+        }
+
+        label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #00d2ff;
         }
 
         .actions {
@@ -62,654 +68,1397 @@
             cursor: pointer;
             font-weight: bold;
             color: white;
+            font-size: 15px;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.99);
         }
 
         #btnMerge {
             background: #8e44ad;
         }
 
+        #btnMerge:hover {
+            background: #9b59b6;
+        }
+
         #btnCopy {
             background: #2980b9;
+        }
+
+        #btnCopy:hover {
+            background: #3498db;
         }
 
         #btnExport {
             background: #d35400;
         }
 
+        #btnExport:hover {
+            background: #e67e22;
+        }
+
         #btnClear {
             background: #c0392b;
         }
 
-        .audit-section {
-            background: #222;
-            border-radius: 8px;
-            padding: 15px;
-            border: 1px solid #444;
-            margin-top: 20px;
-        }
-
-        .log-container {
-            max-height: 300px;
-            overflow-y: auto;
-            font-family: monospace;
-            font-size: 0.85rem;
-        }
-
-        .entry {
-            margin-bottom: 6px;
-            padding: 4px;
-            border-radius: 4px;
-            border-left: 4px solid transparent;
-        }
-
-        .added {
-            border-left-color: #a9dc76;
-            background: rgba(169, 220, 118, 0.1);
-            color: #a9dc76;
-        }
-
-        .changed {
-            border-left-color: #f1c40f;
-            background: rgba(241, 196, 15, 0.1);
-            color: #f1c40f;
-        }
-
-        .removed {
-            border-left-color: #ff6188;
-            background: rgba(255, 97, 136, 0.1);
-            color: #ff6188;
+        #btnClear:hover {
+            background: #e74c3c;
         }
 
         pre {
-            background: #000;
+            background: #2d2d2d;
             padding: 15px;
             border-radius: 8px;
+            border: 2px solid #444;
             overflow-x: auto;
             color: #f8f8f2;
-            border: 1px solid #333;
+            max-height: 400px;
         }
 
-        h3 {
-            margin: 0 0 10px 0;
-            color: #f1c40f;
+        .logs {
+            background: #222;
+            border-left: 4px solid #f1c40f;
+            padding: 12px;
+            font-family: monospace;
+            font-size: 13px;
+            max-height: 350px;
+            overflow-y: auto;
+            line-height: 1.6;
+            border-radius: 4px;
         }
 
-        .violation {
-            border-left-color: #ff9f43;
-            background: rgba(255, 159, 67, 0.1);
-            color: #ff9f43;
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 6px;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .conflict-row {
+            border: 1px dashed #f1c40f;
+            background: rgba(241, 196, 15, 0.05);
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+        }
+
+        .conflict-row.loss-alarm {
+            border: 2px solid #ec407a;
+            background: rgba(236, 64, 122, 0.08);
+            box-shadow: 0 0 10px rgba(236, 64, 122, 0.2);
+        }
+
+        .conflict-row.truncation-alarm {
+            border: 2px solid #ff1744;
+            background: rgba(255, 23, 68, 0.07);
+            box-shadow: 0 0 10px rgba(255, 23, 68, 0.2);
+            animation: pulse-border 2s infinite alternate;
+        }
+
+        .conflict-row.lore-alarm {
+            border: 2px solid #00e5ff;
+            background: rgba(0, 229, 255, 0.08);
+            box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+        }
+
+        @keyframes pulse-border {
+            from {
+                border-color: #ff1744;
+            }
+
+            to {
+                border-color: #ff9100;
+            }
+        }
+
+        .conflict-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-decision {
+            padding: 6px 12px;
+            font-size: 12px;
             font-weight: bold;
+            border-radius: 4px;
+            background: #444;
+            color: #ccc;
+            border: 1px solid #555;
+            cursor: pointer;
+            flex: none;
+        }
+
+        .btn-decision.active[data-opt="1"] {
+            background: #c0392b;
+            color: white;
+            border-color: #e74c3c;
+        }
+
+        .btn-decision.active[data-opt="2"] {
+            background: #d35400;
+            color: white;
+            border-color: #e67e22;
+        }
+
+        .btn-decision.active[data-opt="3"] {
+            background: #27ae60;
+            color: white;
+            border-color: #2ecc71;
+        }
+
+        .added {
+            color: #a9dc76;
+            background: rgba(169, 220, 118, 0.15);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .changed {
+            color: #f1c40f;
+            background: rgba(241, 196, 15, 0.15);
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+
+        .removed {
+            color: #ff6188;
+            background: rgba(255, 97, 136, 0.15);
+            padding: 2px 4px;
+            border-radius: 3px;
+            text-decoration: line-through;
+        }
+
+        .audit-path {
+            color: #00d2ff;
+            font-weight: bold;
+        }
+
+        .audit-op {
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: #2a2a2a;
+            border: 2px solid #555;
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            width: 500px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: 999;
+        }
+
+        .memoria-item {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+
+        .memoria-item input {
+            flex: 1;
+            background: #444;
+            color: #fff;
+            border: 1px solid #666;
+            padding: 4px;
+            border-radius: 4px;
         }
     </style>
 </head>
 
 <body>
+
     <div class="container">
-        <h2>Touhou Survival RPG AI: Sync Response</h2>
+        <h2>Gensokyo Engine - Sincronizador de Datos Avanzado (Auditoría Rectificable)</h2>
+
         <div class="panels">
             <div class="panel">
-                <h3>JSON Base (Estructura Objeto)</h3>
-                <textarea id="json1"
-                    placeholder='Pega aquí o arrastra el archivo con el código JSON de tu partida (JSON 1)'></textarea>
+                <label for="jsonBase">JSON 1: Estado Maestro Completo (Base)</label>
+                <textarea id="jsonBase" placeholder="Arrastra o pega el JSON maestro aquí..."></textarea>
             </div>
             <div class="panel">
-                <h3>JSON Update (Cambios)</h3>
-                <textarea id="json2"
-                    placeholder='Pega aquí o arrastra el archivo con el código JSON de los cambios que la IA sugiere a tu partida (JSON 2)'></textarea>
+                <label for="jsonUpdate">JSON 2: Respuesta de la IA (Actualizaciones / aiActions)</label>
+                <textarea id="jsonUpdate"
+                    placeholder="Arrastra o pega la respuesta parcial de la IA aquí..."></textarea>
             </div>
         </div>
+
         <div class="actions">
-            <button id="btnMerge" onclick="ejecutarSincronizacion()">Sincronizar Datos</button>
-            <button id="btnCopy" onclick="copiar()">Copiar Resultado</button>
+            <button id="btnMerge" onclick="iniciarProcesoCompleto()">Sincronizar Datos</button>
+            <button id="btnCopy" onclick="copiarResultado()">Copiar Resultado</button>
             <button id="btnExport" onclick="exportarArchivo()">Exportar .json</button>
-            <button id="btnClear" onclick="limpiar()">Limpiar Todo</button>
+            <button id="btnClear" onclick="limpiarTodo()">Limpiar Todo</button>
         </div>
-        <div class="audit-section">
-            <h3>Registro de Auditoría</h3>
-            <div id="auditLog" class="log-container">Esperando sincronización...</div>
+
+        <div>
+            <h3>Registro de Auditoría Interactivo (Haz clic en las opciones para rectificar)</h3>
+            <div id="logsSincronizacion" class="logs">Esperando acción...</div>
         </div>
-        <pre id="resultado">---</pre>
+
+        <div>
+            <h3>Resultado Sincronizado</h3>
+            <pre id="resultado">{}</pre>
+        </div>
+
+        <div id="zonaAccionesRapidas" style="display:none;">
+            <h3>Gestión Rápida de Personajes</h3>
+            <div id="listaBotonesChars"></div>
+        </div>
+    </div>
+
+    <div id="modalOverlay" class="modal-overlay" onclick="cerrarModal()"></div>
+    <div id="modalMemorias" class="modal">
+        <h3 id="modalTitulo">Memorias de</h3>
+        <div id="contenidoMemorias"></div>
+        <hr style="border-color:#444;">
+        <h4>Añadir Recuerdo</h4>
+        <div style="display:flex; gap:10px;">
+            <input type="text" id="nuevoRecuerdoTxt"
+                style="flex:1; background:#444; color:#fff; border:1px solid #666; padding:6px; border-radius:4px;">
+            <button id="btnAnadirMemoria" style="padding:6px 12px; font-size:14px;">Añadir</button>
+        </div>
+        <br>
+        <button onclick="cerrarModal()" style="background:#555; padding:6px 12px; font-size:14px;">Cerrar</button>
     </div>
 
     <script>
-        let audit = [];
         let isSystemValid = false;
-        let globalTargetRoot = null;
-        configurarDragAndDrop('json1');
-        configurarDragAndDrop('json2');
-        const UI = {
-            get: (id) => document.getElementById(id),
-            log: (html) => UI.get('auditLog').innerHTML = html,
-            result: (obj) => UI.get('resultado').textContent = JSON.stringify(obj, null, 4)
-        };
-        function getDynamicRoot(data) {
-            return data.dynamicData || data;
-        }
-        function configurarDragAndDrop(elementId) {
-            const area = document.getElementById(elementId);
-            ['dragenter', 'dragover'].forEach(n => area.addEventListener(n, (e) => { e.preventDefault(); area.classList.add('dragover'); }));
-            ['dragleave', 'drop'].forEach(n => area.addEventListener(n, (e) => { e.preventDefault(); area.classList.remove('dragover'); }));
-            area.addEventListener('drop', (e) => {
-                const file = e.dataTransfer.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (ev) => area.value = ev.target.result;
-                    reader.readAsText(file);
+        let mapaConflictos = new Map();
+
+        [document.getElementById('jsonBase'), document.getElementById('jsonUpdate')].forEach(ta => {
+            ta.addEventListener('dragover', e => { e.preventDefault(); ta.classList.add('dragover'); });
+            ta.addEventListener('dragleave', () => ta.classList.remove('dragover'));
+            ta.addEventListener('drop', e => {
+                e.preventDefault();
+                ta.classList.remove('dragover');
+                const archivo = e.dataTransfer.files[0];
+                if (archivo) {
+                    const lector = new FileReader();
+                    lector.onload = evt => ta.value = evt.target.result;
+                    lector.readAsText(archivo);
                 }
             });
+        });
+
+        function getDynamicRoot(obj) {
+            if (!obj) return null;
+            return obj.dynamicData ? obj.dynamicData : obj;
         }
-        function registrar(tipo, ruta, viejo, nuevo, isFixable = false) {
-            audit.push({ tipo, ruta, viejo, nuevo, isFixable });
+
+        function extraerIdsHijas(nodo, listaIds = []) {
+            if (!nodo || typeof nodo !== 'object') return listaIds;
+            if (nodo.hasOwnProperty('idObj') && typeof nodo.idObj === 'number') {
+                listaIds.push(nodo.idObj);
+            }
+            for (let clave in nodo) {
+                if (nodo.hasOwnProperty(clave) && typeof nodo[clave] === 'object') {
+                    extraerIdsHijas(nodo[clave], listaIds);
+                }
+            }
+            return listaIds;
         }
-        function deepMerge(target, source, path = '') {
-            if (!source || typeof source !== 'object') return target;
 
-            for (const key in source) {
-                const sVal = source[key];
-                const currentPath = path ? `${path}.${key}` : key;
-
-                // Si la clave NO existe en el destino, la creamos tal cual
-                if (!(key in target)) {
-                    target[key] = JSON.parse(JSON.stringify(sVal));
-                    registrar('added', currentPath, null, "Nuevo campo");
-                    continue;
-                }
-
-                const tVal = target[key];
-
-                // 1. Evitar redundancia
-                if (JSON.stringify(sVal) === JSON.stringify(tVal)) continue;
-
-                // 2. Lógica de Memorias (Protección y Adición)
-                if (key === "memories" || key === "IAaddMemories") {
-                    handleMemoryLogic(target, key, sVal, currentPath);
-                    continue;
-                }
-
-                // 3. Lógica de WorldStorage
-                if (key === "worldStorage") {
-                    handleWorldStorage(target, sVal, currentPath);
-                    continue;
-                }
-
-                // 4. Valores Primitivos
-                if (typeof sVal !== 'object' || sVal === null) {
-                    if (tVal !== sVal) {
-                        registrar(tVal === undefined ? 'added' : 'updated', currentPath, tVal, sVal);
-                        target[key] = sVal;
+        function detectarTruncado(valor) {
+            if (typeof valor === 'string') {
+                return valor.includes('...');
+            }
+            if (valor && typeof valor === 'object') {
+                for (let k in valor) {
+                    if (valor.hasOwnProperty(k)) {
+                        if (detectarTruncado(valor[k])) return true;
                     }
-                    continue;
-                }
-
-                // 5. Gestión de Arrays con Identidad (Inventarios/NPCs)
-                if (Array.isArray(sVal) && Array.isArray(tVal)) {
-                    handleArraySync(tVal, sVal, currentPath);
-                    continue;
-                }
-
-                // 6. Objetos anidados (Recursión)
-                if (typeof tVal === 'undefined') {
-                    target[key] = JSON.parse(JSON.stringify(sVal));
-                    registrar('added', currentPath, null, "Nuevo objeto");
-                } else {
-                    deepMerge(tVal, sVal, currentPath);
                 }
             }
-            return target;
+            return false;
         }
 
-        function handleMemoryLogic(target, key, sVal, path) {
-            if (key === "memories") {
-                registrar('memoria-bloqueo', path, target.memories, sVal);
-            } else if (key === "IAaddMemories" && Array.isArray(sVal)) {
-                const nuevos = sVal.filter(m => m && m.trim() !== "");
-                if (nuevos.length > 0) {
-                    const prev = [...(target.memories || [])];
-                    target.memories = [...prev, ...nuevos];
-                    registrar('memoria-add', path, prev, nuevos);
-                }
-                target[key] = [""];
+        // =================================================================
+        //  SISTEMA AUXILIAR AUTÓNOMO DEL LIMBO (PROCESADOR FORENSE COMPLETADO)
+        // =================================================================
+        function asegurarEstructuraLimbo(baseRoot) {
+            if (!baseRoot.worldStorage) baseRoot.worldStorage = {};
+            if (!baseRoot.worldStorage.SYSTEM_LOST_FOUND) {
+                baseRoot.worldStorage.SYSTEM_LOST_FOUND = {
+                    name: "Contenedor Global del Limbo",
+                    desc: "Espacio seguro del sistema para objetos huérfanos o desterrados.",
+                    subAreas: {}
+                };
             }
+            const limboRoot = baseRoot.worldStorage.SYSTEM_LOST_FOUND;
+            if (!limboRoot.subAreas) limboRoot.subAreas = {};
+
+            if (!limboRoot.subAreas.Contenedor_Global || Array.isArray(limboRoot.subAreas.Contenedor_Global)) {
+                limboRoot.subAreas.Contenedor_Global = { items: [] };
+            }
+            if (!limboRoot.subAreas.Contenedor_Global.items) {
+                limboRoot.subAreas.Contenedor_Global.items = [];
+            }
+            return limboRoot.subAreas.Contenedor_Global.items;
         }
 
-        function handleWorldStorage(target, sVal, path) {
-            if (!target.worldStorage) target.worldStorage = {};
+        function deducirLastSeenDeRuta(pathArr, baseRoot) {
+            if (!Array.isArray(pathArr) || pathArr.length === 0) {
+                return { type: "subArea", id: "Gensokyo" };
+            }
 
-            for (const areaId in sVal) {
-                // Si el área (ej: MagicForest) no existe, la creamos
-                if (!target.worldStorage[areaId]) {
-                    target.worldStorage[areaId] = { miniAreas: {} };
-                    registrar('added', `${path}.${areaId}`, null, "Nueva Área");
+            // 1. ANÁLISIS PROFUNDO INTERNO DE CONTENEDORES (TU REQUERIMIENTO)
+            // Recorremos los nodos de la ruta de arriba a abajo evaluando si descendemos de un contenedor intermedio
+            let current = baseRoot;
+            let ultimoIdObjContenedor = null;
+
+            for (let i = 0; i < pathArr.length - 1; i++) {
+                if (current && typeof current === 'object') {
+                    current = current[pathArr[i]];
+                    // Si el nodo actual tiene una idObj válida y no es el objeto final que estamos enviando al limbo, es su padre directo
+                    if (current && typeof current === 'object' && current.hasOwnProperty('idObj') && current.idObj !== undefined) {
+                        ultimoIdObjContenedor = current.idObj;
+                    }
                 }
+            }
 
-                const targetArea = target.worldStorage[areaId];
-                const sourceArea = sVal[areaId];
+            // Si hallamos que el objeto estaba metido dentro de otro objeto (mochila, cofre, etc.) devolvemos 'object' obligatoriamente
+            if (ultimoIdObjContenedor !== null) {
+                return { type: "object", id: String(ultimoIdObjContenedor) };
+            }
 
-                // 1. Sincronizar propiedades de área (weather, freq, occ, etc.)
-                Object.keys(sourceArea).forEach(prop => {
-                    if (prop !== "miniAreas") {
-                        // Si es un array (como freq/occ), lo reemplazamos para evitar duplicados internos
-                        if (Array.isArray(sourceArea[prop])) {
-                            targetArea[prop] = [...sourceArea[prop]];
+            // 2. CASO RAÍZ DE PERSONAJES (Si no estaba dentro de un sub-contenedor de ítems)
+            if (pathArr[0] === "chars" && pathArr[1]) {
+                return { type: "char", id: String(pathArr[1]) };
+            }
+
+            // 3. CASO RAÍZ DE WORLDSTORAGE (Objetos directamente en el suelo)
+            if (pathArr[0] === "worldStorage" && pathArr.length > 1) {
+                if (pathArr[1] && pathArr[1] !== "SYSTEM_LOST_FOUND") {
+                    const idxSubAreas = pathArr.indexOf("subAreas");
+                    if (idxSubAreas !== -1 && pathArr[idxSubAreas + 1]) {
+                        return { type: "subArea", id: String(pathArr[idxSubAreas + 1]) };
+                    }
+                    return { type: "subArea", id: String(pathArr[1]) };
+                }
+            }
+
+            // Fallback por si la ruta no coincide con nada conocido
+            if (baseRoot.worldState && baseRoot.worldState.turnActionPlayer_id) {
+                const pId = baseRoot.worldState.turnActionPlayer_id;
+                if (baseRoot.chars && baseRoot.chars[pId]) {
+                    const areaActual = baseRoot.chars[pId].currentSubArea_id || baseRoot.chars[pId].currentMiniArea_id || "Gensokyo";
+                    return { type: "subArea", id: String(areaActual) };
+                }
+            }
+            return { type: "subArea", id: "Gensokyo" };
+        }
+
+        function escanearYDesterrarAlLimbo(nodoPadre, rutaActualArray, baseRoot, registroLogs) {
+            if (!nodoPadre || typeof nodoPadre !== 'object') return;
+
+            if (Array.isArray(nodoPadre)) {
+                for (let i = nodoPadre.length - 1; i >= 0; i--) {
+                    const elemento = nodoPadre[i];
+                    if (elemento && typeof elemento === 'object') {
+                        const rutaElemento = [...rutaActualArray, i];
+
+                        if (elemento.inLimbo === true) {
+                            const arrayLimboFinal = asegurarEstructuraLimbo(baseRoot);
+                            const existeYa = arrayLimboFinal.some(it => it && it.idObj === elemento.idObj);
+
+                            if (!existeYa) {
+                                // Aquí se llama a la lógica corregida que deduce si viene de un char, un sub-objeto o una subArea
+                                if (!elemento.last_seen) {
+                                    elemento.last_seen = deducirLastSeenDeRuta(rutaElemento, baseRoot);
+                                }
+
+                                const objetoDesterrado = nodoPadre.splice(i, 1)[0];
+                                arrayLimboFinal.push(objetoDesterrado);
+
+                                registroLogs.push(`
+                                    <div class="log-entry" style="border-left: 4px solid #9b59b6; background: rgba(155, 89, 182, 0.1); padding: 6px;">
+                                        🌌 <strong>[SISTEMA LIMBO AUTOMÁTICO]</strong> Objeto detectado con flag <code>inLimbo: true</code>.<br>
+                                        📦 <strong>Objeto:</strong> <code>"${objetoDesterrado.n || 'Desconocido'}" (ID: ${objetoDesterrado.idObj})</code> desterrado al Limbo.<br>
+                                        📍 <strong>last_seen resuelto:</strong> [${objetoDesterrado.last_seen.type} -> ID: ${objetoDesterrado.last_seen.id}]
+                                    </div>
+                                `);
+                            } else {
+                                nodoPadre.splice(i, 1);
+                            }
                         } else {
-                            targetArea[prop] = sourceArea[prop];
+                            escanearYDesterrarAlLimbo(elemento, rutaElemento, baseRoot, registroLogs);
                         }
                     }
-                });
-
-                // 2. Sincronizar MiniAreas de forma atómica (Evita duplicados)
-                if (sourceArea.miniAreas) {
-                    if (!targetArea.miniAreas) targetArea.miniAreas = {};
-
-                    for (const mId in sourceArea.miniAreas) {
-                        const contenidoNuevo = sourceArea.miniAreas[mId];
-
-                        // REGLA DE ORO: Reemplazamos el contenido de la miniÁrea directamente.
-                        // Esto evita que si "ZonaArboles1" era [] y ahora es ["Árbol"], se duplique.
-                        targetArea.miniAreas[mId] = JSON.parse(JSON.stringify(contenidoNuevo));
-
-                        registrar('updated', `${path}.${areaId}.miniAreas.${mId}`, "Contenido sincronizado", mId);
-                    }
                 }
-            }
-        }
-
-        function handleArraySync(tVal, sVal, path) {
-            const getID = (obj) => obj.idObj || obj.id || obj.n || obj.nearby_pj_id;
-
-            // Procesar Limbo primero
-            for (let i = sVal.length - 1; i >= 0; i--) {
-                if (sVal[i] ?.inLimbo) {
-                    archiveToLimbo(sVal[i], tVal, path);
-                    sVal.splice(i, 1);
-                }
-            }
-
-            // Sincronizar por ID para evitar duplicados
-            sVal.forEach(sItem => {
-                const sID = getID(sItem);
-                const tIndex = tVal.findIndex(ti => getID(ti) === sID);
-
-                if (tIndex !== -1) {
-                    deepMerge(tVal[tIndex], sItem, `${path}[ID:${sID}]`);
-                } else {
-                    tVal.push(JSON.parse(JSON.stringify(sItem)));
-                    registrar('added', `${path}[ID:${sID}]`, null, sID);
-                }
-            });
-        }
-
-        function archiveToLimbo(item, tArray, path) {
-            const root = getDynamicRoot(globalTargetRoot);
-            const id = item.idObj || item.n;
-
-            // Asegurar existencia de SYSTEM_LOST_FOUND
-            if (!root.worldStorage.SYSTEM_LOST_FOUND) {
-                root.worldStorage.SYSTEM_LOST_FOUND = { miniAreas: { "Contenedor_Global": [] } };
-            }
-
-            const objetoCompleto = tArray.find(ti => (ti.idObj || ti.n) === id) || item;
-            objetoCompleto.last_seen = { path: path, t: new Date().toLocaleTimeString() };
-
-            root.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global.push(objetoCompleto);
-            registrar('evento-mundo-limbo', path, objetoCompleto.n, "Archivado");
-        }
-
-        function ejecutarSincronizacion() {
-            try {
-                const rawBase = UI.get('json1').value;
-                const rawUpdate = UI.get('json2').value;
-
-                if (!rawBase || !rawUpdate) throw new Error("Faltan datos de entrada.");
-                let targetData = JSON.parse(rawBase);
-                let sourceData = fusionarDuplicadosManual(rawUpdate);
-                globalTargetRoot = targetData;
-                audit = [];
-
-                // Normalizar entrada de la IA
-                if (!sourceData.dynamicData && (sourceData.worldState || sourceData.chars || sourceData.worldStorage)) {
-                    sourceData = { dynamicData: sourceData };
-                }
-
-                deepMerge(targetData, sourceData);
-
-                // Post-procesamiento obligatorios
-                const world = getDynamicRoot(targetData).worldState;
-
-                if (world && world.lastNarration) {
-                    const valorPrevio = world.lastNarration.OptChosen;
-                    world.lastNarration.OptChosen = "";
-                    if (valorPrevio !== "" && valorPrevio !== null) {
-                        registrar('updated', 'worldState.lastNarration.OptChosen', valorPrevio, "");
-                    }
-                }
-
-                auditarReglas(targetData);
-                auditarPersistencia(targetData);
-
-                UI.result(targetData);
-                renderAudit();
-                isSystemValid = true;
-            } catch (e) {
-                isSystemValid = false;
-                alert("Fallo en la sincronización: " + e.message);
-                console.error(e);
-            }
-        }
-
-        function renderAudit() {
-            const container = document.getElementById('auditLog');
-            container.innerHTML = audit.map((a, index) => {
-                // Bloqueo de puntos suspensivos (Pereza)
-                if (a.tipo === 'regla-violation' && a.nuevo === "Resumen detectado (...)") {
-                    return `<div class="entry violation" style="border-left: 4px solid #ff4757; background: rgba(255,71,87,0.1);">
-                        <b>[🚫 BLOQUEO]</b> ${a.ruta}: La IA intentó resumir. Se preservó el original.
-                    </div>`;
-                }
-
-                // Violación de Rango (Stats)
-                if (a.tipo === 'regla-violation') {
-                    alert("Se sugirió aplicar un 'valor ilegal', antes de exportar revisa la auditoría y el JSON sincronizado para solucionarlo o tu partida podría corromperse, aviso.");
-                    return `<div class="entry violation">
-                        <b>[⚠️ RANGO]</b> ${a.ruta}: El valor ${a.viejo} es ilegal. 
-                        <button onclick="aplicarCorreccion(${index})">Corregir a ${a.nuevo}</button>
-                    </div>`;
-                }
-
-                // Caso cuando la IA intenta borrar/sobrescribir recuerdos antiguos
-                if (a.tipo === 'memoria-bloqueo') {
-                    const pId = a.ruta.split('.')[2]; // Extrae "P1" o el ID del char
-                    return `<div class="entry violation" style="border-left-color: #e67e22; background: rgba(230, 126, 34, 0.1);">
-        <b>[🚫 BLOQUEO]</b> La IA intentó modificar recuerdos antiguos de <b>${pId}</b>.
-        <div style="margin-top:8px; display:flex; gap:10px;">
-            <button onclick="verCambioMemoria(${index})" style="background:#e67e22; padding:4px 8px; font-size:10px;">Ver Intento IA</button>
-            <button onclick="abrirEditorMemorias('${pId}')" style="background:#3498db; padding:4px 8px; font-size:10px;">Gestionar Memorias</button>
-        </div>
-    </div>`;
-                }
-
-                if (a.tipo === 'memoria-add') {
-                    const pId = a.ruta.split('.')[2]; //
-                    const listaNuevos = a.nuevo.map(m => `<li>${m}</li>`).join('');
-                    return `<div class="entry changed" style="border-left-color: #2ecc71; background: rgba(46, 204, 113, 0.1);">
-        <b>[🧠 MEMORIA]</b> Se han integrado nuevos recuerdos en <b>${pId}</b>:
-        <ul style="margin: 5px 0; padding-left: 20px; font-style: italic; color: #a9dc76;">${listaNuevos}</ul>
-        <div style="display:flex; gap:10px;">
-            <button onclick="restaurarMemories(${index})" style="background:#27ae60; padding:4px 8px; font-size:10px;">Deshacer</button>
-            <button onclick="abrirEditorMemorias('${pId}')" style="background:#3498db; padding:4px 8px; font-size:10px;">Editar Historial</button>
-        </div>
-    </div>`;
-                }
-
-                if (a.tipo === 'added') return `<div class="entry added"><b>[+ ]</b> ${a.ruta}</div>`;
-                if (a.tipo === 'changed' || a.tipo === 'updated') {
-                    return `<div class="entry changed"><b>[MOD]</b> ${a.ruta}: ${JSON.stringify(a.viejo)} ➔ ${JSON.stringify(a.nuevo)}</div>`;
-                }
-                if (a.tipo === 'removed') {
-                    alert("Se sugirió eliminar algo, te recomiendo revisar la auditoría y el JSON sincronizado por precaución (opcional)");
-                    return `<div class="entry removed">
-                                <b>[🗑️ ELIMINADO]</b> ${a.ruta} ha desaparecido del JSON.
-                                <button onclick="restaurarObjeto(${index})" style="background:#2980b9;">Revertir Eliminación</button>
-                            </div>`;
-                }
-                if (a.tipo === 'evento-mundo') {
-                    return `<div class="entry changed" style="border-left-color: #9b59b6; background: rgba(155, 89, 182, 0.1);">
-                                <b>[🎭 TRAMA]</b> El objeto <b>${a.viejo}</b> ha sido desplazado o eliminado por la narrativa de la IA.
-                            </div>`;
-                }
-                if (a.tipo === 'evento-mundo-limbo') {
-                    return `<div class="entry changed" style="border-left-color: #9b59b6; background: rgba(155, 89, 182, 0.1);">
-                                <b>[🌌 LIMBO]</b> El objeto <b>${a.viejo}</b> ha sido archivado en el Contenedor Global.
-                                <small style="display:block; opacity:0.7;">Origen: ${a.ruta}</small>
-                            </div>`;
-                }
-                return "";
-            }).join('');
-        }
-
-        function aplicarCorreccion(index) {
-            const item = audit[index];
-            const elResultado = document.getElementById('resultado');
-            const finalData = JSON.parse(elResultado.textContent);
-
-            // 1. Lógica de recuperación de datos para "Resumen detectado"
-            if (item.nuevo === "Resumen detectado (...)") {
-                const j1 = JSON.parse(document.getElementById('json1').value);
-                const valorOriginal = buscarEnObjeto(j1, item.ruta);
-                asignarEnObjeto(finalData, item.ruta, valorOriginal);
             } else {
-                // 2. Lógica de corrección de Stats (Valores ilegales)
-                const keys = item.ruta.split('.'); // ej: ["P1", "food"]
-                let target = finalData.dynamicData ? finalData.dynamicData.chars : finalData.chars;
+                for (let llave in nodoPadre) {
+                    if (nodoPadre.hasOwnProperty(llave) && llave !== 'SYSTEM_LOST_FOUND' && typeof nodoPadre[llave] === 'object') {
+                        escanearYDesterrarAlLimbo(nodoPadre[llave], [...rutaActualArray, llave], baseRoot, registroLogs);
+                    }
+                }
+            }
+        }
 
-                if (target && target[keys[0]] && target[keys[0]][keys[1]]) {
-                    // Cambiamos el valor actual [0] por el valor sugerido (el máximo o 0)
-                    target[keys[0]][keys[1]][0] = item.nuevo;
+        // =================================================================
+        //  GUARDIÁN DE CONTROL INTERACTIVO Y AUDITORÍA RECTIFICABLE
+        // =================================================================
+        function evaluarYRegistrarCambio(baseRoot, pathArr, nuevoValor, tipoFase, registroLogs) {
+            const stringPath = pathArr.join('.');
+            const valorOriginal = getValueByPath(baseRoot, pathArr);
+            const tipoOriginal = typeof valorOriginal;
+            let tipoNuevo = typeof nuevoValor;
+
+            // =================================================================
+            // 🔥 NUEVO: INTERCEPTOR RADAR PARA CAPTURAR CUALQUIER ALTERACIÓN
+            // =================================================================
+            if (pathArr.length >= 2 && pathArr[0] === 'chars') {
+                const charId = pathArr[1];
+                if (charId && typeof charId === 'string' && charId !== 'id_tplMANDATORY' && window.personajesManipulados) {
+                    window.personajesManipulados.add(charId);
+                }
+            }
+            // =================================================================
+
+            // Si el original era número y la IA envía un string numérico, lo sanamos automáticamente
+            if (tipoOriginal === 'number' && tipoNuevo === 'string' && !isNaN(nuevoValor) && nuevoValor.trim() !== '') {
+                nuevoValor = Number(nuevoValor);
+                tipoNuevo = 'number';
+            }
+
+            // Si a pesar de la sanación los tipos siguen sin coincidir (y el original no era null/undefined)
+            if (valorOriginal !== null && valorOriginal !== undefined && tipoOriginal !== tipoNuevo) {
+                const conflictoKey = `${tipoFase}_TYPE_MUTATION_${stringPath}`;
+                if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1"); // Opción 1 por defecto: Mantener Original
+                const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                registroLogs.push(`
+            <div class="conflict-row loss-alarm">
+                ⚠️ <strong>[CAMBIO DE TIPO DE DATO DETECTADO]</strong><br>
+                La IA intenta cambiar el tipo de <span class="audit-path">"${stringPath}"</span> de <code>${tipoOriginal}</code> a <code>${tipoNuevo}</code>.<br>
+                ❌ Original: <code>${JSON.stringify(valorOriginal)}</code> | 👉 Propuesto: <code>${JSON.stringify(nuevoValor)}</code>
+                <div class="conflict-actions">
+                    <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">❌ Mantener Seguro (Original)</button>
+                    <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">⚠️ Aceptar Cambio de Tipo (Peligroso)</button>
+                </div>
+            </div>
+        `);
+                return { aprobado: (opcionElegida === "2"), value: nuevoValor };
+            }
+
+            if (detectarTruncado(nuevoValor)) {
+                const conflictoKey = `${tipoFase}_TRUNC_${stringPath}`;
+                if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1");
+                const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                registroLogs.push(`
+            <div class="conflict-row truncation-alarm">
+                🛑 <strong>[ALERTA CRÍTICA: TRUNCADO DETECTADO]</strong><br>
+                La IA intentó enviar texto incompleto <code>"..."</code> en la ruta: <span class="audit-path">"${stringPath}"</span>.<br>
+                <div class="conflict-actions">
+                    <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">❌ Mantener Seguro (Rechazar Cambio IA)</button>
+                    <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">⚠️ Forzar Pérdida (Aceptar Valor Truncado)</button>
+                </div>
+            </div>
+        `);
+                return { aprobado: (opcionElegida !== "1"), value: nuevoValor };
+            }
+
+            // =========================================================================
+            // 🔥 NUEVO BLOQUE OPTIMIZADO: CORTAFUEGOS DE CONCIENCIA (MEMORIES)
+            // =========================================================================
+            const esRaizMemories = stringPath.endsWith('.memories');
+            const esIndiceMemories = pathArr.includes('memories') && !isNaN(pathArr[pathArr.length - 1]);
+
+            if (esRaizMemories || esIndiceMemories) {
+                // Obtenemos los nombres del personaje afectado de forma dinámica para los textos
+                const idxMemories = pathArr.indexOf('memories');
+                const charId = idxMemories > 0 ? pathArr[idxMemories - 1] : "Personaje Desconocido";
+                const nombreChar = (baseRoot.chars && baseRoot.chars[charId]) ? (baseRoot.chars[charId].nick || charId) : charId;
+
+                // REGLA 1: Intento de eliminar o vaciar el nodo "memories" por completo
+                if (esRaizMemories && (nuevoValor === null || nuevoValor === undefined)) {
+                    const conflictoKey = `${tipoFase}_DELETE_MEMORIES_${stringPath}`;
+                    if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1"); // Opción 1: Rechazar por defecto
+                    const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                    registroLogs.push(`
+                <div class="conflict-row loss-alarm" style="border: 2px solid #ff1744; background: rgba(255, 23, 68, 0.1);">
+                    🛑 <strong>[INTENTO DE AMNESIA FORZADA DETECTADO]</strong><br>
+                    La IA está intentando ELIMINAR por completo el historial de recuerdos de <strong>"${nombreChar}"</strong>.<br>
+                    <div class="conflict-actions" style="margin-top: 8px;">
+                        <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">❌ Bloquear Borrado (Mantener Recuerdos Seguros)</button>
+                        <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">⚠️ Permitir Amnesia Total (Peligroso)</button>
+                    </div>
+                </div>
+            `);
+                    return { aprobado: (opcionElegida === "2"), value: (opcionElegida === "2" ? nuevoValor : valorOriginal) };
+                }
+
+                // REGLA 2: Es una adición limpia y legítima enviada desde la Fase 1 Quirúrgica
+                if (tipoFase === "aiActions(MemoryAdd)") {
+                    return { aprobado: true, value: nuevoValor }; // Pasa de largo automáticamente sin alertas interactivas
+                }
+
+                // REGLA 3: Intento de sobrescritura, alteración del pasado o reordenamiento estructural
+                // Solo se activa si el stringificado de datos es realmente diferente (para evitar falsas alertas)
+                if (JSON.stringify(valorOriginal) !== JSON.stringify(nuevoValor)) {
+                    const conflictoKey = `${tipoFase}_REPLACE_MEMORIES_${stringPath}`;
+                    if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1"); // Opción 1: Rechazar por defecto
+                    const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                    let mensajeAlerta = esRaizMemories ?
+                        `La IA propone sobrescribir o alterar la lista completa de recuerdos de <strong>"${nombreChar}"</strong>.` :
+                        `La IA intenta modificar el recuerdo del índice [${pathArr[pathArr.length - 1]}] de <strong>"${nombreChar}"</strong>.<br>❌ Antes: <code>${JSON.stringify(valorOriginal)}</code><br>👉 Propuesto: <code>"${nuevoValor}"</code>`;
+
+                    registroLogs.push(`
+                <div class="conflict-row lore-alarm" style="border-left: 4px solid #b388ff; background: rgba(179, 136, 255, 0.08);">
+                    🔮 <strong>[BLOQUEO DE MEMORIAS INTERCEPTADO]</strong><br>
+                    ${mensajeAlerta}<br>
+                    <div class="conflict-actions" style="margin-top: 8px;">
+                        <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">❌ Mantener Recuerdos Originales (Seguro)</button>
+                        <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">⚠️ Autorizar Modificación de la IA</button>
+                    </div>
+                </div>
+            `);
+                    return { aprobado: (opcionElegida === "2"), value: (opcionElegida === "2" ? nuevoValor : valorOriginal) };
                 }
             }
 
-            // 3. ACTUALIZACIÓN DE DATOS Y UI
-            elResultado.textContent = JSON.stringify(finalData, null, 4);
+            if (Array.isArray(valorOriginal) && Array.isArray(nuevoValor)) {
+                const idsOriginales = extraerIdsHijas(valorOriginal);
+                const idsNuevas = extraerIdsHijas(nuevoValor);
+                const idsPerdidas = idsOriginales.filter(id => !idsNuevas.includes(id));
 
-            // 4. ELIMINAR EL AVISO: Quitamos el item del array global 'audit'
-            audit.splice(index, 1);
+                if (idsPerdidas.length > 0) {
+                    const conflictoKey = `${tipoFase}_LOSS_${stringPath}`;
+                    if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1");
+                    const opcionElegida = mapaConflictos.get(conflictoKey);
 
-            // 5. RE-RENDERIZAR: La lista se dibuja de nuevo sin el elemento corregido
-            renderAudit();
+                    const detallesPerdidos = idsPerdidas.map(id => {
+                        const findObj = (arr) => {
+                            for (let x of arr) {
+                                if (x && x.idObj === id) return x.n || `Objeto ID ${id}`;
+                                if (x && x.items && Array.isArray(x.items)) {
+                                    let sub = findObj(x.items); if (sub) return sub;
+                                }
+                            }
+                            return `Objeto ID ${id}`;
+                        };
+                        return `<code>"${findObj(valorOriginal)}"</code> (ID: ${id})`;
+                    }).join(", ");
 
-            alert(`Corregido ${item.ruta} a ${item.nuevo}`);
+                    registroLogs.push(`
+                <div class="conflict-row loss-alarm">
+                    🚨 <strong>[ALERTA DE SEGURIDAD: OMISIÓN DE OBJETOS]</strong><br>
+                    La IA omitió los siguientes objetos existentes en <span class="audit-path">"${stringPath}"</span>: ${detallesPerdidos}.<br>
+                    <div class="conflict-actions">
+                        <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">❌ Proteger Todo (Rechazar Cambio)</button>
+                        <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">⚠️ Forzar Borrado (Aceptar pérdida)</button>
+                        <button class="btn-decision ${opcionElegida === '3' ? 'active' : ''}" data-opt="3" onclick="cambiarDecision('${conflictoKey}', '3')">🛡️ Conciliar Realidades (Actualizar + Recuperar)</button>
+                    </div>
+                </div>
+            `);
+
+                    if (opcionElegida === "1") return { aprobado: false, value: null };
+                    if (opcionElegida === "2") return { aprobado: true, value: nuevoValor };
+                    if (opcionElegida === "3") {
+                        let copiaConciliada = JSON.parse(JSON.stringify(nuevoValor));
+                        const obtenerObjetoPorId = (arr, targetId) => {
+                            for (let item of arr) {
+                                if (item && item.idObj === targetId) return item;
+                                if (item && item.items && Array.isArray(item.items)) {
+                                    let sub = obtenerObjetoPorId(item.items, targetId); if (sub) return sub;
+                                }
+                            }
+                            return null;
+                        };
+                        idsPerdidas.forEach(id => {
+                            const objOriginal = obtenerObjetoPorId(valorOriginal, id);
+                            if (objOriginal) copiaConciliada.unshift(JSON.parse(JSON.stringify(objOriginal)));
+                        });
+                        return { aprobado: true, value: copiaConciliada };
+                    }
+                }
+            }
+
+            // VALIDACIÓN MECÁNICA: Ubicación inexistente para personajes
+            if (stringPath.endsWith('current_location') && typeof nuevoValor === 'string') {
+                const mapaExiste = existeUbicacionEnMapa(baseRoot.worldStorage || {}, nuevoValor);
+
+                if (!mapaExiste) {
+                    const conflictoKey = `${tipoFase}_INVALID_LOC_${stringPath}`;
+                    if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1"); // Opción 1 por defecto: Rechazar
+                    const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                    registroLogs.push(`
+                <div class="conflict-row loss-alarm" style="border-left: 4px solid #ff5555; background: rgba(255,85,85,0.08);">
+                    ⚠️ <strong>[ALERTA DE CONSISTENCIA ESPACIAL]</strong><br>
+                    La IA intenta mover al personaje a una ubicación no registrada: <code style="background:#222; color:#ff5555;">"${nuevoValor}"</code>.<br>
+                    ❌ Ubicación Original: <code>"${valorOriginal}"</code> | 👉 Propuesta: <code>"${nuevoValor}"</code>
+                    <div class="conflict-actions" style="margin-top: 8px;">
+                        <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">❌ Rechazar (Mantener Ubicación Segura)</button>
+                        <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">⚠️ Forzar Ubicación (Crear Vacío Narrativo)</button>
+                    </div>
+                </div>
+            `);
+
+                    return {
+                        aprobado: (opcionElegida === "2"),
+                        value: (opcionElegida === "2" ? nuevoValor : valorOriginal)
+                    };
+                }
+            }
+
+            if (pathArr.length >= 4 && pathArr[0] === 'chars' && pathArr[3] === 0) {
+                const charId = pathArr[1];
+                const statKey = pathArr[2];
+                if (baseRoot.chars && baseRoot.chars[charId] && Array.isArray(baseRoot.chars[charId][statKey])) {
+                    const statArray = baseRoot.chars[charId][statKey];
+                    const maxValor = statArray[1] !== undefined ? statArray[1] : Infinity;
+                    if (typeof nuevoValor === 'number' && (nuevoValor < 0 || nuevoValor > maxValor)) {
+                        let valorReparado = nuevoValor < 0 ? 0 : maxValor;
+                        const conflictoKey = `${tipoFase}_STAT_${stringPath}`;
+                        if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1");
+                        const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                        registroLogs.push(`
+                    <div class="conflict-row">
+                        ⚠️ <strong>[DESBORDAMIENTO EN STAT]</strong> Valor fuera de rango para <code>${statKey}</code> de <strong>${charId}</strong>.
+                        <div class="conflict-actions">
+                            <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">1 - Rechazar Cambio</button>
+                            <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">2 - Forzar Valor IA</button>
+                            <button class="btn-decision ${opcionElegida === '3' ? 'active' : ''}" data-opt="3" onclick="cambiarDecision('${conflictoKey}', '3')">3 - Reparar a Límite (${valorReparado})</button>
+                        </div>
+                    </div>
+                `);
+                        if (opcionElegida === "1") return { aprobado: false, value: null };
+                        if (opcionElegida === "2") return { aprobado: true, value: nuevoValor };
+                        if (opcionElegida === "3") return { aprobado: true, value: valorReparado };
+                    }
+                }
+            }
+
+            return { aprobado: true, value: nuevoValor };
         }
 
-        function copiar() {
-            if (!isSystemValid) return alert("Sincroniza primero.");
-            navigator.clipboard.writeText(document.getElementById('resultado').textContent);
-            alert("Copiado al portapapeles.");
+        function cambiarDecision(conflictoKey, nuevaOpcion) {
+            mapaConflictos.set(conflictoKey, nuevaOpcion);
+            ejecutarSincronizacionProcesada();
+        }
+
+        function iniciarProcesoCompleto() {
+            mapaConflictos.clear();
+            ejecutarSincronizacionProcesada();
+        }
+
+        function processAiActions(base, update, logs) {
+            const baseRoot = getDynamicRoot(base);
+            const updateRoot = getDynamicRoot(update);
+
+            if (!updateRoot || !updateRoot.aiActions) {
+                logs.push("<div class='log-entry'>No se detectó 'aiActions'. Omitiendo fase transaccional.</div>");
+                return;
+            }
+
+            const actions = updateRoot.aiActions;
+            if (actions.why) logs.push(`<div class='log-entry'><strong>Justificación IA:</strong> <em>${actions.why}</em></div>`);
+
+            const implicadosEnTurno = new Set();
+            if (baseRoot.worldState && baseRoot.worldState.turnActionPlayer_id) implicadosEnTurno.add(baseRoot.worldState.turnActionPlayer_id);
+
+            if (!baseRoot.worldState) baseRoot.worldState = {};
+            if (!Array.isArray(baseRoot.worldState.reusableObjIds)) baseRoot.worldState.reusableObjIds = [];
+
+            if (Array.isArray(actions.sequence)) {
+                actions.sequence.forEach((action, index) => {
+                    const paso = `<strong>[Paso ${index + 1}]</strong>`;
+
+                    switch (action.op) {
+                        case "delete":
+                            if (action.targetId !== undefined) {
+                                const localizacion = encontrarRutaYPadrePorId(baseRoot, action.targetId);
+                                if (localizacion) {
+                                    const { padre, clave, objeto } = localizacion;
+                                    extraerIdsHijas(objeto).forEach(id => {
+                                        if (!baseRoot.worldState.reusableObjIds.includes(id)) baseRoot.worldState.reusableObjIds.push(id);
+                                    });
+                                    baseRoot.worldState.reusableObjIds.sort((a, b) => a - b);
+
+                                    padre.splice(clave, 1);
+                                    logs.push(`<div class='log-entry'>${paso} <span class='removed audit-op'>[DELETE BY ID]</span> Objeto "${objeto.n}" (ID: ${action.targetId}) removido con éxito.</div>`);
+                                } else {
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Intentó borrar ID ${action.targetId} pero no se encontró en el mundo.</div>`);
+                                }
+                            } else if (action.id !== undefined) {
+                                const hallado = findAndExtractObjId(baseRoot, action.id);
+                                if (hallado) {
+                                    extraerIdsHijas(hallado).forEach(id => {
+                                        if (!baseRoot.worldState.reusableObjIds.includes(id)) baseRoot.worldState.reusableObjIds.push(id);
+                                    });
+                                    baseRoot.worldState.reusableObjIds.sort((a, b) => a - b);
+                                    logs.push(`<div class='log-entry'>${paso} <span class='removed audit-op'>[DELETE]</span> Objeto ID ${action.id} removido.</div>`);
+                                }
+                            } else if (Array.isArray(action.path)) {
+                                // 1. Capturamos el valor completo del nodo antes de borrarlo
+                                const valorAntiguo = getValueByPath(baseRoot, action.path);
+
+                                if (valorAntiguo !== null && valorAntiguo !== undefined) {
+                                    // Extraemos e indexamos las IDs hijas para el sistema de reciclaje
+                                    const idsHijas = extraerIdsHijas(valorAntiguo);
+                                    idsHijas.forEach(id => {
+                                        if (!baseRoot.worldState.reusableObjIds.includes(id)) baseRoot.worldState.reusableObjIds.push(id);
+                                    });
+                                    baseRoot.worldState.reusableObjIds.sort((a, b) => a - b);
+
+                                    // --- SOLUCIÓN: STRINGIFICACIÓN ESTRUCTURAL COMPLETA ---
+                                    // Convertimos todo el fragmento borrado en texto JSON formateado
+                                    const jsonEstructuraDestruida = JSON.stringify(valorAntiguo, null, 4);
+
+                                    // 2. Ejecutamos el borrado físico en el JSON maestro
+                                    if (deleteByPath(baseRoot, action.path)) {
+                                        logs.push(`
+                    <div class='log-entry'>
+                        ${paso} <span class='removed audit-op'>[DELETE]</span> Nodo en <span class='audit-path'>${JSON.stringify(action.path)}</span> eliminado de la existencia.
+                        <div style="margin-top: 8px; border-left: 3px solid #ff6188; padding-left: 10px;">
+                            <span style="font-size: 12px; color: #ff6188; font-weight: bold; display: block; margin-bottom: 4px;">☢️ ESTRUCTURA COMPLETA ELIMINADA (DATOS ORIGINALES):</span>
+                            <pre style="background: #111; color: #ff6188; border: 1px solid #333; font-size: 12px; max-height: 250px; overflow-y: auto; margin: 0; padding: 10px; line-height: 1.4;">${escapeHtml(jsonEstructuraDestruida)}</pre>
+                        </div>
+                    </div>
+                `);
+                                    }
+                                } else {
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Intentó borrar la ruta <span class='audit-path'>${JSON.stringify(action.path)}</span> pero ya no existía.</div>`);
+                                }
+                            }
+                            break;
+
+                        case "editObj":
+                            // NUEVA OPERACIÓN: Permite editar propiedades de un objeto directamente por su ID
+                            if (action.targetId !== undefined && action.updates) {
+                                const localizacion = encontrarRutaYPadrePorId(baseRoot, action.targetId);
+                                if (localizacion) {
+                                    const { objeto, ruta } = localizacion;
+
+                                    // Recorremos las actualizaciones que pide la IA (ej: modificar "det" o "q")
+                                    for (let prop in action.updates) {
+                                        if (action.updates.hasOwnProperty(prop)) {
+                                            const rutaPropiedad = [...ruta, prop];
+                                            const valorAntiguo = objeto[prop];
+                                            const nuevoValor = action.updates[prop];
+
+                                            // Evaluamos mediante tu sistema de seguridad reactivo
+                                            const decision = evaluarYRegistrarCambio(baseRoot, rutaPropiedad, nuevoValor, "aiActions(editObj)", logs);
+                                            if (!decision.aprobado) continue;
+
+                                            objeto[prop] = decision.value;
+                                            logs.push(`<div class='log-entry'>${paso} <span class='changed audit-op'>[EDIT OBJ]</span> Objeto ID ${action.targetId} ("${objeto.n}"). Propiedad <code>"${prop}"</code> actualizada.</div>`);
+                                        }
+                                    }
+                                } else {
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Intentó editar objeto ID ${action.targetId} pero no existe.</div>`);
+                                }
+                            }
+                            break;
+
+                        case "move":
+                            // Soportamos tanto 'targetId' (nuevo estándar) como 'id' (retrocompatibilidad)
+                            const idAMover = action.targetId !== undefined ? action.targetId : action.id;
+
+                            if (idAMover !== undefined && Array.isArray(action.to)) {
+                                const destino = getValueByPath(baseRoot, action.to);
+                                if (!destino) {
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Destino inaccesible para mover el objeto ID ${idAMover}.</div>`);
+                                    break;
+                                }
+
+                                // 1. Buscamos el objeto para clonar sus datos ANTES de que 'findAndExtractObjId' lo extirpe de su sitio
+                                // Nota: Si tienes una función específica para buscar sin borrar úsala, si no, podemos usar un truco intermedio.
+                                // Asumiendo que findAndExtractObjId extrae el objeto, lo guardamos en una variable.
+                                const objetoMovido = findAndExtractObjId(baseRoot, idAMover);
+
+                                if (objetoMovido) {
+                                    // Evaluamos el cambio antes de insertarlo en el destino para activar tus alertas de seguridad
+                                    const decisionMove = evaluarYRegistrarCambio(baseRoot, action.to, objetoMovido, "aiActions(Move)", logs);
+                                    if (!decisionMove.aprobado) {
+                                        // Si el usuario o el sistema lo rechaza, lo devolvemos a donde estaba (o evitamos perderlo)
+                                        // (Dependiendo de tu arquitectura, aquí podrías reinsertarlo, pero si está aprobado seguimos:)
+                                    }
+
+                                    // Stringificamos el objeto aislado que se va a mover
+                                    const jsonObjetoMovido = JSON.stringify(objetoMovido, null, 4);
+                                    const detalleMovimiento = `
+                <div style="margin-top: 8px; border-left: 3px solid #78dce8; padding-left: 10px;">
+                    <span style="font-size: 12px; color: #78dce8; font-weight: bold; display: block; margin-bottom: 4px;">📦 OBJETO EN TRÁNSITO (DATOS TRANSFERIDOS):</span>
+                    <pre style="background: #111; color: #78dce8; border: 1px solid #333; font-size: 12px; max-height: 200px; overflow-y: auto; margin: 0; padding: 10px; line-height: 1.4;">${escapeHtml(jsonObjetoMovido)}</pre>
+                </div>
+            `;
+
+                                    // 2. Insertamos el objeto en el array o contenedor de destino
+                                    if (Array.isArray(destino)) {
+                                        destino.push(objetoMovido);
+                                    } else if (action.key) {
+                                        destino[action.key] = objetoMovido;
+                                    }
+
+                                    logs.push(`
+                <div class='log-entry'>
+                    ${paso} <span class='changed audit-op' style='background: #78dce8; color: #111;'>[MOVE]</span> Objeto ID ${idAMover} movido con éxito a <span class='audit-path'>${JSON.stringify(action.to)}</span>
+                    ${detalleMovimiento}
+                </div>
+            `);
+                                } else {
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ No se pudo mover el objeto ID ${idAMover} porque no se encontró en ninguna parte del mundo.</div>`);
+                                }
+                            }
+                            break;
+
+                        case "create":
+                            if (Array.isArray(action.to) && action.data) {
+                                const targetContainer = getValueByPath(baseRoot, action.to);
+                                if (!targetContainer) break;
+                                let freshData = JSON.parse(JSON.stringify(action.data));
+
+                                const decisionCreate = evaluarYRegistrarCambio(baseRoot, action.to, freshData, "aiActions(Create)", logs);
+                                if (!decisionCreate.aprobado) break;
+                                freshData = decisionCreate.value;
+
+                                // Preparamos la visualización del JSON que se va a inyectar
+                                const jsonEstructuraCreada = JSON.stringify(freshData, null, 4);
+                                let detalleInyeccion = `
+            <div style="margin-top: 8px; border-left: 3px solid #a9dc76; padding-left: 10px;">
+                <span style="font-size: 12px; color: #a9dc76; font-weight: bold; display: block; margin-bottom: 4px;">✨ ESTRUCTURA INYECTADA (DATOS NUEVOS):</span>
+                <pre style="background: #111; color: #a9dc76; border: 1px solid #333; font-size: 12px; max-height: 250px; overflow-y: auto; margin: 0; padding: 10px; line-height: 1.4;">${escapeHtml(jsonEstructuraCreada)}</pre>
+            </div>
+        `;
+
+                                if (action.isObj === true) {
+                                    let assignedId = baseRoot.worldState.reusableObjIds.length > 0 ? baseRoot.worldState.reusableObjIds.shift() : ((baseRoot.worldState.lastGeneratedObjId || 0) + 1);
+                                    if (!baseRoot.worldState.reusableObjIds.length) baseRoot.worldState.lastGeneratedObjId = assignedId;
+
+                                    // Le asignamos la ID al objeto real
+                                    freshData.idObj = assignedId;
+
+                                    // Volvemos a stringificar para que el recuadro del log muestre la ID asignada en tiempo real
+                                    const jsonConId = JSON.stringify(freshData, null, 4);
+                                    detalleInyeccion = `
+                <div style="margin-top: 8px; border-left: 3px solid #a9dc76; padding-left: 10px;">
+                    <span style="font-size: 12px; color: #a9dc76; font-weight: bold; display: block; margin-bottom: 4px;">✨ OBJETO CONFIGURADO DE FORMA DINÁMICA:</span>
+                    <pre style="background: #111; color: #a9dc76; border: 1px solid #333; font-size: 12px; max-height: 250px; overflow-y: auto; margin: 0; padding: 10px; line-height: 1.4;">${escapeHtml(jsonConId)}</pre>
+                </div>
+            `;
+
+                                    if (Array.isArray(targetContainer)) targetContainer.push(freshData);
+
+                                    logs.push(`
+                <div class='log-entry'>
+                    ${paso} <span class='added audit-op'>[CREATE]</span> Objeto ID ${assignedId} en <span class='audit-path'>${JSON.stringify(action.to)}</span>
+                    ${detalleInyeccion}
+                </div>
+            `);
+                                } else if (action.key) {
+                                    targetContainer[action.key] = freshData;
+                                    logs.push(`
+                <div class='log-entry'>
+                    ${paso} <span class='added audit-op'>[CREATE]</span> Propiedad <span class='audit-path'>"${action.key}"</span> creada en <span class='audit-path'>${JSON.stringify(action.to)}</span>.
+                    ${detalleInyeccion}
+                </div>
+            `);
+                                } else if (Array.isArray(targetContainer)) {
+                                    targetContainer.push(freshData);
+                                    logs.push(`
+                <div class='log-entry'>
+                    ${paso} <span class='added audit-op'>[CREATE]</span> Añadido en array de <span class='audit-path'>${JSON.stringify(action.to)}</span>.
+                    ${detalleInyeccion}
+                </div>
+            `);
+                                }
+                            }
+                            break;
+
+                        case "edit":
+                            if (Array.isArray(action.path) && action.value !== undefined) {
+                                const valorAntiguo = getValueByPath(baseRoot, action.path);
+                                const decision = evaluarYRegistrarCambio(baseRoot, action.path, action.value, "aiActions(Edit)", logs);
+                                if (!decision.aprobado) break;
+
+                                if (setValueByPath(baseRoot, action.path, decision.value)) {
+                                    logs.push(`<div class='log-entry'>${paso} <span class='changed audit-op'>[EDIT]</span> Mutación en <span class='audit-path'>${JSON.stringify(action.path)}</span><br>❌ <strong>Antes:</strong> <span class='removed'>${JSON.stringify(valorAntiguo)}</span><br>👉 <strong>Ahora:</strong> <span class='changed'>${JSON.stringify(decision.value)}</span></div>`);
+                                }
+                            }
+                            break;
+
+                        case "memory":
+                            if (action.charId && Array.isArray(action.texts)) {
+                                const personaje = baseRoot.chars ? baseRoot.chars[action.charId] : null;
+                                const nombrePersonaje = personaje ? (personaje.nick || action.charId) : action.charId;
+
+                                if (personaje) {
+                                    if (!Array.isArray(personaje.memories)) {
+                                        personaje.memories = [];
+                                    }
+
+                                    // --- CAMBIO AQUÍ: Le avisamos al evaluador que es un "MemoryAdd" legítimo ---
+                                    const decisionMemory = evaluarYRegistrarCambio(baseRoot, ["chars", action.charId, "memories"], action.texts, "aiActions(MemoryAdd)", logs);
+                                    if (!decisionMemory.aprobado) break;
+
+                                    let bloquesRecuerdos = action.texts.map(txt => `<li>🧠 <em>"${escapeHtml(txt)}"</em></li>`).join("");
+                                    const detalleMemorias = `
+                <div style="margin-top: 6px; border-left: 3px solid #b388ff; padding-left: 10px; background: rgba(179, 136, 255, 0.05); padding-top: 4px; padding-bottom: 4px;">
+                    <span style="font-size: 12px; color: #b388ff; font-weight: bold; display: block; margin-bottom: 2px;">NUEVOS RECUERDOS CONSOLIDADOS:</span>
+                    <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #d1c4e9; line-height: 1.4;">
+                        ${bloquesRecuerdos}
+                    </ul>
+                </div>
+            `;
+
+                                    action.texts.forEach(txt => personaje.memories.push(txt));
+
+                                    logs.push(`
+                <div class='log-entry'>
+                    ${paso} <span class='changed audit-op' style='background: #b388ff; color: #111;'>[MEMORY]</span> Registro de experiencia para <strong>"${nombrePersonaje}"</strong>.
+                    ${detalleMemorias}
+                </div>
+            `);
+                                } else {
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Intentó añadir recuerdos a "${action.charId}" pero el personaje no existe.</div>`);
+                                }
+                            }
+                            break;
+
+                    case 'editRadar':
+                        // Asegurar que la estructura base exista en el JSON maestro
+                        if (!baseRoot.additionalIdsToSeeInfoForAI) {
+                            baseRoot.additionalIdsToSeeInfoForAI = { chars: [], worldStorage: [] };
+                        }
+                        if (!baseRoot.additionalIdsToSeeInfoForAI.chars) baseRoot.additionalIdsToSeeInfoForAI.chars = [];
+                        if (!baseRoot.additionalIdsToSeeInfoForAI.worldStorage) baseRoot.additionalIdsToSeeInfoForAI.worldStorage = [];
+
+                        // 1. Añadir personajes al radar extendido
+                        if (action.addChars && Array.isArray(action.addChars)) {
+                            action.addChars.forEach(id => {
+                                const limpio = String(id).trim();
+                                if (limpio && !baseRoot.additionalIdsToSeeInfoForAI.chars.includes(limpio)) {
+                                    baseRoot.additionalIdsToSeeInfoForAI.chars.push(limpio);
+                                    logs.push(`<div class='log-entry' style='color:#b388ff;'>👁️ Radar: Añadido personaje "${limpio}" al canal de espionaje.</div>`);
+                                }
+                            });
+                        }
+                        // 2. Añadir subÁreas al radar extendido
+                        if (action.addWorld && Array.isArray(action.addWorld)) {
+                            action.addWorld.forEach(id => {
+                                const limpio = String(id).trim();
+                                if (limpio && !baseRoot.additionalIdsToSeeInfoForAI.worldStorage.includes(limpio)) {
+                                    baseRoot.additionalIdsToSeeInfoForAI.worldStorage.push(limpio);
+                                    logs.push(`<div class='log-entry' style='color:#b388ff;'>👁️ Radar: Añadida subÁrea "${limpio}" al canal de espionaje.</div>`);
+                                }
+                            });
+                        }
+                        // 3. Remover personajes del radar extendido
+                        if (action.removeChars && Array.isArray(action.removeChars)) {
+                            action.removeChars.forEach(id => {
+                                const limpio = String(id).trim();
+                                const idx = baseRoot.additionalIdsToSeeInfoForAI.chars.indexOf(limpio);
+                                if (idx !== -1) {
+                                    baseRoot.additionalIdsToSeeInfoForAI.chars.splice(idx, 1);
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>👁️ Radar: Removido personaje "${limpio}" del canal de espionaje.</div>`);
+                                }
+                            });
+                        }
+                        // 4. Remover subÁreas del radar extendido
+                        if (action.removeWorld && Array.isArray(action.removeWorld)) {
+                            action.removeWorld.forEach(id => {
+                                const limpio = String(id).trim();
+                                const idx = baseRoot.additionalIdsToSeeInfoForAI.worldStorage.indexOf(limpio);
+                                if (idx !== -1) {
+                                    baseRoot.additionalIdsToSeeInfoForAI.worldStorage.splice(idx, 1);
+                                    logs.push(`<div class='log-entry' style='color:#ff6188;'>👁️ Radar: Removida subÁrea "${limpio}" del canal de espionaje.</div>`);
+                                }
+                            });
+                        }
+                        break;
+                    }
+                });
+            }
+            // =================================================================
+            // 🔥 NUEVO: CONSOLIDACIÓN DE IMPLICADOS (JUGADOR + MANIPULADOS)
+            // =================================================================
+            if (window.personajesManipulados) {
+                window.personajesManipulados.forEach(id => implicadosEnTurno.add(id));
+            }
+            window.lastTurnImplicatedChars = Array.from(implicadosEnTurno);
+        }
+
+        function findAndExtractObjId(currentArea, targetId) {
+            if (!currentArea || typeof currentArea !== 'object') return null;
+            if (Array.isArray(currentArea)) {
+                for (let i = 0; i < currentArea.length; i++) {
+                    if (currentArea[i] && currentArea[i].idObj === targetId) return currentArea.splice(i, 1)[0];
+                }
+            }
+            for (let key in currentArea) {
+                if (currentArea.hasOwnProperty(key) && typeof currentArea[key] === 'object') {
+                    const found = findAndExtractObjId(currentArea[key], targetId); if (found) return found;
+                }
+            }
+            return null;
+        }
+
+        function getValueByPath(root, pathArr) {
+            return pathArr.reduce((acc, key) => (acc && acc[key] !== undefined) ? acc[key] : null, root);
+        }
+
+        function setValueByPath(root, pathArr, value) {
+            if (!pathArr.length) return false;
+            let current = root;
+            for (let i = 0; i < pathArr.length - 1; i++) {
+                let key = pathArr[i]; if (current[key] === undefined) return false; current = current[key];
+            }
+            current[pathArr[pathArr.length - 1]] = value; return true;
+        }
+
+        function deleteByPath(root, pathArr) {
+            if (!pathArr.length) return false;
+            let current = root;
+            for (let i = 0; i < pathArr.length - 1; i++) {
+                let key = pathArr[i]; if (current[key] === undefined) return false; current = current[key];
+            }
+            let finalKey = pathArr[pathArr.length - 1];
+            if (Array.isArray(current)) current.splice(Number(finalKey), 1); else delete current[finalKey];
+            return true;
+        }
+
+        function enviarAlLimbo(baseRoot, item) {
+            const arrayLimboFinal = asegurarEstructuraLimbo(baseRoot);
+            const existeYa = arrayLimboFinal.some(it => it && it.idObj === item.idObj);
+            if (!existeYa) {
+                item.inLimbo = true;
+                if (!item.last_seen) item.last_seen = { type: "subArea", id: "Gensokyo" };
+                arrayLimboFinal.push(item);
+            }
+        }
+
+        function deepMerge(target, source, path = '', logs = [], baseRootRef = null) {
+            if (!source || typeof source !== 'object') return;
+            const root = baseRootRef || target;
+            const baseRootSystem = baseRootRef || target;
+
+            for (const key in source) {
+                if (source.hasOwnProperty(key)) {
+                    let logPathPrefix = (path === '' && root !== target) ? 'dynamicData' : path;
+                    const currentPath = logPathPrefix ? `${logPathPrefix}.${key}` : key;
+                    const arrayRutaActual = currentPath.split('.');
+
+                    if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                        if (!target[key] || typeof target[key] !== 'object' || Array.isArray(target[key])) target[key] = {};
+                        deepMerge(target[key], source[key], currentPath, logs, root);
+                    } else {
+                        if (target[key] !== undefined) {
+                            if (JSON.stringify(target[key]) !== JSON.stringify(source[key])) {
+                                const decisionDM = evaluarYRegistrarCambio(baseRootSystem, arrayRutaActual, source[key], "DeepMerge", logs);
+                                if (!decisionDM.aprobado) continue;
+
+                                if (Array.isArray(target[key])) {
+                                    const idsDestruidos = extraerIdsHijas(target[key]);
+                                    if (idsDestruidos.length > 0) {
+                                        const ws = getDynamicRoot(root).worldState || {};
+                                        if (!ws.reusableObjIds) ws.reusableObjIds = [];
+                                        idsDestruidos.forEach(id => { if (!ws.reusableObjIds.includes(id)) ws.reusableObjIds.push(id); });
+                                        ws.reusableObjIds.sort((a, b) => a - b);
+                                    }
+                                }
+                                logs.push(`<div class='log-entry'><strong>[DeepMerge]</strong> Mutación en <span class='audit-path'>"${currentPath}"</span><br>❌ <strong>Antes:</strong> <span class='removed'>${JSON.stringify(target[key])}</span><br>👉 <strong>Ahora:</strong> <span class='changed'>${JSON.stringify(decisionDM.value)}</span></div>`);
+                                target[key] = JSON.parse(JSON.stringify(decisionDM.value));
+                            }
+                        } else {
+                            const decisionDM = evaluarYRegistrarCambio(baseRootSystem, arrayRutaActual, source[key], "DeepMerge", logs);
+                            if (!decisionDM.aprobado) continue;
+                            logs.push(`<div class='log-entry'><strong>[DeepMerge]</strong> Inyección residual <span class='audit-path'>"${currentPath}"</span></div>`);
+                            target[key] = JSON.parse(JSON.stringify(decisionDM.value));
+                        }
+                    }
+                }
+            }
+        }
+
+        function ejecutarSincronizacionProcesada() {
+            const txtBase = document.getElementById('jsonBase').value.trim();
+            const txtUpdate = document.getElementById('jsonUpdate').value.trim();
+            const elLogs = document.getElementById('logsSincronizacion');
+
+            if (!txtBase || !txtUpdate) return;
+
+            try {
+                let baseObj = JSON.parse(txtBase);
+                let updateObj = JSON.parse(txtUpdate);
+                let listaLogs = [];
+                isSystemValid = false;
+
+                // =================================================================
+                // 🔥 NUEVO: RASTREADOR DE PERSONAJES MANIPULADOS EN EL TURNO
+                // =================================================================
+                window.personajesManipulados = new Set();
+
+                // DETECTOR DE IDS DUPLICADAS EN EL JSON MAESTRO (BASE)
+                const idsDuplicadasDetectadas = verificarIdsDuplicadas(baseObj);
+
+                if (idsDuplicadasDetectadas.size > 0) {
+                    const listaIds = Array.from(idsDuplicadasDetectadas).join(', ');
+                    listaLogs.push(`
+                <div class="conflict-row loss-alarm" style="border: 2px dashed #ff1744; background: rgba(255, 23, 68, 0.15); margin-bottom: 15px;">
+                    ☢️ <strong>[ALERTA CRÍTICA DE BASE DE DATOS]</strong><br>
+                    ¡Se han detectado IDs de objetos duplicadas en el JSON Maestro!<br>
+                    ⚠️ <strong>IDs Afectadas:</strong> <code style="background:#111; color:#ff1744; padding:2px 6px;">[ ${listaIds} ]</code><br>
+                    <span style="font-size:12px; color:#aaa;">Nota: Las operaciones Quirúrgicas de movimiento (move), borrado (delete) o edición (editObj) pueden actuar sobre el objeto equivocado debido a este conflicto de identidad. Se recomienda reparar las IDs manualmente.</span>
+                </div>
+            `);
+                }
+
+                // Continúa tu código normal de sincronización...
+                listaLogs.push("<div style='color:#00d2ff; font-weight:bold; border-bottom:1px solid #444; padding-bottom:4px;'>Fase 1: Comandos Quirúrgicos 'aiActions'</div>");
+                processAiActions(baseObj, updateObj, listaLogs);
+
+                if (updateObj.aiActions) delete updateObj.aiActions;
+                if (updateObj.dynamicData && updateObj.dynamicData.aiActions) delete updateObj.dynamicData.aiActions;
+
+                listaLogs.push("<br><div style='color:#00d2ff; font-weight:bold; border-bottom:1px solid #444; padding-bottom:4px;'>Fase 2: Comparación Estructural Residual (Deep Merge)</div>");
+                let mergeTarget = baseObj;
+                if (baseObj.dynamicData && !updateObj.dynamicData) mergeTarget = baseObj.dynamicData;
+
+                deepMerge(mergeTarget, updateObj, '', listaLogs, baseObj);
+
+                // =================================================================
+                // FASE 3: ESCÁNER DE SANACIÓN FORENSE (DETECTA IN-LIMBO CORREGIDO)
+                // =================================================================
+                listaLogs.push("<br><div style='color:#9b59b6; font-weight:bold; border-bottom:1px solid #444; padding-bottom:4px;'>Fase 3: Sanación y Destierro Inteligente al Limbo</div>");
+                let baseRootRef = getDynamicRoot(baseObj);
+                escanearYDesterrarAlLimbo(baseRootRef, [], baseRootRef, listaLogs);
+
+                // --- ANCLA DE SEGURIDAD ABSOLUTA ---
+                // Nos aseguramos de que bajo ninguna circunstancia se haya corrompido la plantilla
+
+                if (baseRootRef.aiActions) {
+                    baseRootRef.aiActions.why = "Brief narrative justification of the actions taken during the turn.";
+                    baseRootRef.aiActions.sequence = [
+                        {
+                            "op": "string (edit | editObj | create | move | delete | memory | editRadar)",
+                            "targetId": "numeric (required for 'editObj', alternative for 'delete' or 'move' to target items directly by their idObj)",
+                            "updates": "object (required ONLY for 'editObj', e.g., {\"q\": 2, \"det\": \"Equipped\"})",
+                            "path": ["array", "of", "strings/numbers", "for", "generic", "target", "path"],
+                            "value": "any (required ONLY for generic 'edit' operation)",
+                            "to": ["array", "for", "destination", "path"],
+                            "key": "string (optional, dictionary key for 'create' operation)",
+                            "isObj": "boolean (optional, if true autogenerates incremental idObj)",
+                            "data": "object (required ONLY for 'create' operation)",
+                            "charId": "string (required ONLY for 'memory' operation)",
+                            "texts": ["array", "of", "strings", "for", "new", "memories"],
+                            "addChars": ["array", "of", "strings", "IDs", "of", "NPCs", "to", "spy"],
+                            "addWorld": ["array", "of", "strings", "IDs", "of", "subAreas", "to", "spy"],
+                            "removeChars": ["array", "of", "strings", "IDs", "to", "stop", "spying"],
+                            "removeWorld": ["array", "of", "strings", "IDs", "to", "stop", "spying"]
+                        }
+                    ];
+                    baseRootRef.aiActions.note_sequence = "CRITICAL: Use 'targetId' and 'editObj' instead of item array indexes in 'path' to avoid index shift bugs when deleting or modifying items.";
+                }
+
+                document.getElementById('resultado').textContent = JSON.stringify(baseObj, null, 4);
+                elLogs.innerHTML = listaLogs.join('');
+                isSystemValid = true;
+                actualizarPanelAccionesRapidas(baseObj, window.lastTurnImplicatedChars || []);
+
+            } catch (error) {
+                console.error(error);
+                isSystemValid = false;
+                elLogs.innerHTML = `<div style="color:#ff6188; padding:8px;"><strong>Error crítico:</strong> ${error.message}</div>`;
+            }
+        }
+
+        function copiarResultado() {
+            if (!isSystemValid) return alert("Ejecuta la sincronización primero.");
+            navigator.clipboard.writeText(document.getElementById('resultado').textContent)
+                .then(() => alert("Copiado al portapapeles."))
+                .catch(err => alert("Error: " + err));
         }
 
         function exportarArchivo() {
-            if (!isSystemValid) return alert("Sincroniza primero.");
-            const dynamic = JSON.parse(document.getElementById('resultado').textContent).dynamicData || finalData;
-            const fileName = `ESync_${String(dynamic.worldState.turnActionPlayer_id)}_${dynamic.chars[dynamic.worldState.turnActionPlayer_id].currentArea_id || "Gensokyo"}_D${dynamic.worldState.time.day}_H${dynamic.worldState.time.h.replace(':', 'M')}.json`;
-            const blob = new Blob([document.getElementById('resultado').textContent], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = fileName;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function limpiar() {
-            if (confirm("¿Limpiar todo?")) {
-                document.getElementById('json1').value = "";
-                document.getElementById('json2').value = "";
-                document.getElementById('resultado').textContent = "---";
-                document.getElementById('auditLog').innerHTML = "Esperando...";
-                isSystemValid = false;
-            }
-        }
-
-        function auditarReglas(data) {
-            const chars = data.dynamicData ?.chars || data.chars;
-            if (!chars) return;
-
-            Object.keys(chars).forEach(id => {
-                if (id === 'id_tplMANDATORY') return;
-                const c = chars[id];
-
-                // Lista de todos tus stats numéricos
-                const statsAVerificar = ['food', 'water', 'sleep', 'hp', 'energy', 'magDmg', 'magDef', 'flySpd', 'physDmg', 'physDef', 'runSpd', 'runSpd', "refl"];
-
-                statsAVerificar.forEach(stat => {
-                    if (c[stat] && Array.isArray(c[stat])) {
-                        let actual = c[stat][0];
-                        const max = c[stat][1];
-
-                        if (actual < 0) {
-                            registrar('regla-violation', `${id}.${stat}`, actual, 0, true);
-                        } else if (actual > max) {
-                            registrar('regla-violation', `${id}.${stat}`, actual, max, true);
-                        }
-                    }
-                });
-            });
-        }
-
-        function auditarPersistencia(data) {
-            const chars = data.dynamicData ?.chars || data.chars;
-            const world = data.dynamicData ?.worldStorage || data.worldStorage;
-            if (!chars || !world) return;
-
-            // 1. Recolectamos nombres de objetos que están en el mundo (suelo/cofres)
-            let itemsEnMundo = [];
-            Object.values(world).forEach(area => {
-                if (area.miniAreas) {
-                    Object.values(area.miniAreas).forEach(contenido => {
-                        if (Array.isArray(contenido)) {
-                            contenido.forEach(item => { if (item.n) itemsEnMundo.push(item.n); });
-                        }
-                    });
-                }
-            });
-
-            // 2. Cruzamos datos con el inventario del jugador
-            Object.keys(chars).forEach(id => {
-                const inv = chars[id].inv;
-                if (Array.isArray(inv)) {
-                    inv.forEach(item => {
-                        if (itemsEnMundo.includes(item.n)) {
-                            // Si el objeto está en ambos sitios, es una violación de persistencia
-                            registrar('regla-violation', `PERSISTENCIA: ${item.n}`, "Duplicado (Mundo + Inv)", "Debe estar en uno solo", false);
-                        }
-                    });
-                }
-            });
-        }
-
-        function fusionarDuplicadosManual(jsonString) {
-            // 1. Limpieza básica de caracteres extraños que a veces mete la IA
-            let textoLimpio = jsonString.trim();
-
-            // Si la IA puso texto antes o después del JSON, intentamos extraer solo el bloque { ... }
-            const match = textoLimpio.match(/\{[\s\S]*\}/);
-            if (match) textoLimpio = match[0];
-
-            // 2. Manejo de duplicados mediante un "Reviver" en JSON.parse
-            // Esta es la forma más elegante: mientras parsea, si encuentra una clave repetida,
-            // fusiona el contenido en lugar de renombrarlo.
-            let clavesVistas = new Set();
-
-            // El truco: JSON.parse por defecto sobreescribe claves duplicadas (se queda con la última).
-            // Si quieres FUSIONARLAS en lugar de que la última gane, usamos este objeto temporal:
-            let tempStorage = {};
-
+            if (!isSystemValid) return alert("Ejecuta la sincronización primero.");
             try {
-                // Usamos un parse simple primero. 
-                // Nota: Si la IA envía {"a": 1, "a": 2}, el JSON.parse estándar devolverá {"a": 2}.
-                // Esto suele ser suficiente para la IA porque suele repetir el bloque con la info corregida.
-                return JSON.parse(textoLimpio, (key, value) => {
-                    return value;
-                });
-            } catch (e) {
-                console.error("Error en parseo, intentando recuperación agresiva de comas...");
-                // Reparación de comas sobrantes (muy común en IAs)
-                textoLimpio = textoLimpio.replace(/,\s*([\}\]])/g, '$1');
-                return JSON.parse(textoLimpio);
+                const finalContent = document.getElementById('resultado').textContent;
+                const finalData = JSON.parse(finalContent);
+                const dynamic = getDynamicRoot(finalData);
+                let fileName = "ESync_Resultado.json";
+                if (dynamic && dynamic.worldState && dynamic.chars) {
+                    const playerId = dynamic.worldState.turnActionPlayer_id || "Gensokyo";
+                    const currentArea = dynamic.chars[playerId] ?.currentArea_id || "AreaDesconocida";
+                    const day = dynamic.worldState.time ?.day || "0";
+                    const hour = (dynamic.worldState.time ?.h || "00-00").replace(':', 'M');
+                    fileName = `ESync_${String(playerId)}_${currentArea}_D${day}_H${hour}.json`;
+                }
+                const blob = new Blob([finalContent], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); a.href = url; a.download = fileName; a.click(); URL.revokeObjectURL(url);
+            } catch (err) { alert("Error: " + err.message); }
+        }
+
+        function limpiarTodo() {
+            if (confirm("¿Limpiar todo?")) {
+                document.getElementById('jsonBase').value = ""; document.getElementById('jsonUpdate').value = "";
+                document.getElementById('resultado').textContent = "{}"; document.getElementById('logsSincronizacion').innerHTML = "Esperando...";
+                document.getElementById('zonaAccionesRapidas').style.display = 'none'; mapaConflictos.clear(); isSystemValid = false;
             }
         }
 
-        function restaurarMemories(index) {
-            const item = audit[index];
-            const elResultado = document.getElementById('resultado');
-            const finalData = JSON.parse(elResultado.textContent);
+        function actualizarPanelAccionesRapidas(data, filtrarPorIds) {
+            const contenedor = document.getElementById('zonaAccionesRapidas');
+            const listaBotones = document.getElementById('listaBotonesChars');
+            listaBotones.innerHTML = '';
+            const root = getDynamicRoot(data);
+            if (root && root.chars) {
+                let personajesAMostrar = Object.keys(root.chars).filter(charId => charId !== 'id_tplMANDATORY');
+                if (filtrarPorIds && filtrarPorIds.length > 0) personajesAMostrar = personajesAMostrar.filter(charId => filtrarPorIds.includes(charId));
 
-            // Extraemos el ID del personaje del path (ej: dynamicData.chars.P1.IAaddMemories)
-            const charId = item.ruta.split('.')[2];
-            let chars = finalData.dynamicData ? finalData.dynamicData.chars : finalData.chars;
-
-            if (chars && chars[charId]) {
-                chars[charId].memories = item.viejo; // Restauramos el array antes del push
-                elResultado.textContent = JSON.stringify(finalData, null, 4);
-                audit.splice(index, 1);
-                renderAudit();
-                alert("Nuevos recuerdos eliminados. Se conservan los originales.");
+                if (personajesAMostrar.length > 0) {
+                    contenedor.style.display = 'block';
+                    personajesAMostrar.forEach(charId => {
+                        const btn = document.createElement('button');
+                        btn.style.margin = '5px'; btn.style.background = '#00d2ff'; btn.style.color = '#111'; btn.style.flex = 'initial'; btn.style.padding = '8px 16px';
+                        btn.textContent = `Editar Memorias: ${root.chars[charId].nick || charId}`;
+                        btn.onclick = () => abrirEditorMemorias(charId);
+                        listaBotones.appendChild(btn);
+                    });
+                } else { contenedor.style.display = 'none'; }
             }
-        }
-
-        function verCambioMemoria(index) {
-            const item = audit[index];
-            alert("LA IA INTENTÓ CAMBIAR TUS MEMORIAS POR ESTO:\n\n" + JSON.stringify(item.nuevo, null, 2) + "\n\nEL MOTOR HA BLOQUEADO ESTA ACCIÓN AUTOMÁTICAMENTE.");
         }
 
         function abrirEditorMemorias(charId) {
             const finalData = JSON.parse(document.getElementById('resultado').textContent);
-            const chars = finalData.dynamicData ? finalData.dynamicData.chars : finalData.chars;
-            const memories = chars[charId].memories || [];
+            const root = getDynamicRoot(finalData); if (!root || !root.chars || !root.chars[charId]) return;
+            const personaje = root.chars[charId];
+            document.getElementById('modalTitulo').textContent = `Memorias de ${personaje.nick || charId}`;
+            const contenedor = document.getElementById('contenidoMemorias'); contenedor.innerHTML = '';
+            const memorias = personaje.memories || [];
 
-            let html = `<div style="padding:10px; background:#222; border-radius:8px; border:1px solid #444;">
-        <h4 style="color:#f1c40f; margin-top:0;">🧠 Gestor de Memorias: ${charId}</h4>
-        
-        <div style="margin-bottom:15px; display:flex; gap:5px;">
-            <input type="text" id="newMemoryInput" placeholder="Inyectar nueva memoria..." style="flex:1; padding:8px; border-radius:4px; border:1px solid #555; background:#111; color:white;">
-            <button onclick="inyectarMemoria('${charId}')" style="background:#27ae60; width:auto; padding:0 15px;">Añadir</button>
-        </div>
-
-        <ul style="list-style:none; padding:0; max-height:250px; overflow-y:auto;">`;
-
-            memories.forEach((m, i) => {
-                html += `
-        <li style="background:#333; margin-bottom:8px; padding:8px; border-radius:4px; border-left:4px solid #3498db;">
-            <textarea onchange="editarMemoria('${charId}', ${i}, this.value)" style="width:100%; height:40px; background:transparent; border:none; color:#e0e0e0; font-family:sans-serif; font-size:0.85rem; resize:vertical; padding:0;">${m}</textarea>
-            <div style="text-align:right; margin-top:5px;">
-                <button onclick="eliminarMemoria('${charId}', ${i})" style="background:transparent; color:#ff6188; padding:2px 5px; font-size:0.7rem; border:1px solid #ff6188;">Eliminar</button>
-            </div>
-        </li>`;
-            });
-
-            html += `</ul>
-        <button onclick="renderAudit()" style="background:#444; width:100%; margin-top:10px;">Volver a Auditoría</button>
-    </div>`;
-
-            document.getElementById('auditLog').innerHTML = html;
+            if (memorias.length === 0) {
+                contenedor.innerHTML = '<p style="color:#aaa; font-style:italic;">Sin recuerdos.</p>';
+            } else {
+                memorias.forEach((mem, index) => {
+                    const item = document.createElement('div'); item.className = 'memoria-item';
+                    item.innerHTML = `
+                        <input type="text" value="${mem.replace(/"/g, '&quot;')}" onchange="editarMemoria('${charId}', ${index}, this.value)">
+                        <button onclick="eliminarMemoria('${charId}', ${index})" style="background:#ff4757; padding:4px 8px; font-size:12px; flex:none; width:auto;">X</button>
+                    `;
+                    contenedor.appendChild(item);
+                });
+            }
+            document.getElementById('btnAnadirMemoria').onclick = () => {
+                const txt = document.getElementById('nuevoRecuerdoTxt').value.trim();
+                if (txt) { anadirMemoria(charId, txt); document.getElementById('nuevoRecuerdoTxt').value = ''; }
+            };
+            document.getElementById('modalOverlay').style.display = 'block'; document.getElementById('modalMemorias').style.display = 'block';
         }
 
-        function inyectarMemoria(charId) {
-            const input = document.getElementById('newMemoryInput');
-            const texto = input.value.trim();
-            if (!texto) return;
+        window.cerrarModal = function () {
+            document.getElementById('modalOverlay').style.display = 'none'; document.getElementById('modalMemorias').style.display = 'none';
+        }
 
-            const elResultado = document.getElementById('resultado');
-            const finalData = JSON.parse(elResultado.textContent);
-            let chars = finalData.dynamicData ? finalData.dynamicData.chars : finalData.chars;
-
-            if (!chars[charId].memories) chars[charId].memories = [];
-            chars[charId].memories.push(texto);
-
-            elResultado.textContent = JSON.stringify(finalData, null, 4);
-            abrirEditorMemorias(charId);
+        function anadirMemoria(charId, texto) {
+            const elResultado = document.getElementById('resultado'); const finalData = JSON.parse(elResultado.textContent);
+            let root = getDynamicRoot(finalData); if (!root.chars[charId].memories) root.chars[charId].memories = [];
+            root.chars[charId].memories.push(texto); elResultado.textContent = JSON.stringify(finalData, null, 4); abrirEditorMemorias(charId);
         }
 
         function editarMemoria(charId, index, nuevoTexto) {
-            const elResultado = document.getElementById('resultado');
-            const finalData = JSON.parse(elResultado.textContent);
-            let chars = finalData.dynamicData ? finalData.dynamicData.chars : finalData.chars;
-
-            chars[charId].memories[index] = nuevoTexto;
-            elResultado.textContent = JSON.stringify(finalData, null, 4);
+            const elResultado = document.getElementById('resultado'); const finalData = JSON.parse(elResultado.textContent);
+            let root = getDynamicRoot(finalData); root.chars[charId].memories[index] = nuevoTexto; elResultado.textContent = JSON.stringify(finalData, null, 4);
         }
 
         function eliminarMemoria(charId, index) {
-            if (!confirm("¿Eliminar este recuerdo permanentemente?")) return;
-            const elResultado = document.getElementById('resultado');
-            const finalData = JSON.parse(elResultado.textContent);
-            let chars = finalData.dynamicData ? finalData.dynamicData.chars : finalData.chars;
-
-            chars[charId].memories.splice(index, 1);
-            elResultado.textContent = JSON.stringify(finalData, null, 4);
-            abrirEditorMemorias(charId);
+            if (!confirm("¿Eliminar recuerdo?")) return;
+            const elResultado = document.getElementById('resultado'); const finalData = JSON.parse(elResultado.textContent);
+            let root = getDynamicRoot(finalData); root.chars[charId].memories.splice(index, 1); elResultado.textContent = JSON.stringify(finalData, null, 4); abrirEditorMemorias(charId);
         }
 
+        function verificarIdsDuplicadas(nodo, mapaIds = new Set(), duplicadas = new Set()) {
+            if (!nodo || typeof nodo !== 'object') return duplicadas;
+            if (nodo.hasOwnProperty('idObj') && typeof nodo.idObj === 'number') {
+                if (mapaIds.has(nodo.idObj)) {
+                    duplicadas.add(nodo.idObj);
+                } else {
+                    mapaIds.add(nodo.idObj);
+                }
+            }
+            for (let clave in nodo) {
+                if (nodo.hasOwnProperty(clave) && typeof nodo[clave] === 'object') {
+                    verificarIdsDuplicadas(nodo[clave], mapaIds, duplicadas);
+                }
+            }
+            return duplicadas;
+        }
 
+        // ==========================================
+        // NUEVA LÓGICA PARA ENCONTRAR LA RUTA REAL DE UN ID ANTES DE OPERAR
+        // ==========================================
+        function encontrarRutaYPadrePorId(nodo, targetId, rutaActual = []) {
+            if (!nodo || typeof nodo !== 'object') return null;
+
+            // Si es un array, buscamos si uno de sus hijos directos tiene la ID
+            if (Array.isArray(nodo)) {
+                for (let i = 0; i < nodo.length; i++) {
+                    if (nodo[i] && nodo[i].idObj === targetId) {
+                        return { padre: nodo, clave: i, objeto: nodo[i], ruta: [...rutaActual, i] };
+                    }
+                    // Búsqueda recursiva profunda dentro del elemento del array (por ejemplo, si es una mochila)
+                    let resultado = encontrarRutaYPadrePorId(nodo[i], targetId, [...rutaActual, i]);
+                    if (resultado) return resultado;
+                }
+            } else {
+                // Si es un objeto, buscamos en sus propiedades
+                for (let llave in nodo) {
+                    if (nodo.hasOwnProperty(llave) && typeof nodo[llave] === 'object') {
+                        let resultado = encontrarRutaYPadrePorId(nodo[llave], targetId, [...rutaActual, llave]);
+                        if (resultado) return resultado;
+                    }
+                }
+            }
+            return null;
+        }
+        function escapeHtml(text) {
+            if (typeof text !== 'string') return '';
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function existeUbicacionEnMapa(nodo, targetKey) {
+            if (!nodo || typeof nodo !== 'object') return false;
+            // Si encontramos la clave directamente en el diccionario de subáreas o almacenamiento
+            if (nodo.hasOwnProperty(targetKey)) return true;
+
+            for (let k in nodo) {
+                if (nodo.hasOwnProperty(k) && typeof nodo[k] === 'object') {
+                    if (existeUbicacionEnMapa(nodo[k], targetKey)) return true;
+                }
+            }
+            return false;
+        }
     </script>
 </body>
 

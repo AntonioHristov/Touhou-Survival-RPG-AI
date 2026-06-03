@@ -250,8 +250,9 @@
             if (!gameData) return;
             const selectedId = document.getElementById('charSelect').value;
             const areaData = gameData.dynamicData.worldStorage[gameData.dynamicData.chars[selectedId].currentArea_id] || {};
-            document.getElementById('statsContent').innerHTML = UIComponents.stats(selectedId, gameData.dynamicData.chars[selectedId], areaData.weather || "No definido");
-            document.getElementById('invContent').innerHTML = UIComponents.inventory(gameData.dynamicData.chars[selectedId], (areaData.miniAreas && areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id]) ? areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id] : []);
+            document.getElementById('statsContent').innerHTML = UIComponents.stats(selectedId);
+            //document.getElementById('invContent').innerHTML = UIComponents.inventory(gameData.dynamicData.chars[selectedId], (areaData.miniAreas && areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id]) ? areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id] : []);
+            document.getElementById('invContent').innerHTML = UIComponents.inventory(gameData.dynamicData.chars[selectedId]);
             document.getElementById('worldContent').innerHTML = UIComponents.world(gameData.dynamicData);
             document.getElementById('extraContent').innerHTML = UIComponents.extra(gameData.dynamicData.chars[selectedId]);
             document.getElementById('sec-prompt').querySelector('.data-box').innerHTML = UIComponents.prompt(selectedId, gameData.dynamicData);
@@ -275,70 +276,137 @@
                 btn.style.background = originalText.includes("PARTE 1") ? "#ff4757" : "#444";
             }, 2000);
         }
-        function detallar(dato, esInventario = false, contextoEspecial = "", idPadre = null, arrayContenedor = null, index = -1) {
-            if (dato === null || typeof dato !== 'object') return `<span>${dato}</span>`;
-            if (Array.isArray(dato)) {
-                return dato.map((item, idx) => `<div class="item-card">${detallar(item, esInventario, contextoEspecial, idPadre, dato, idx)}</div>`).join("");
+        function detallar(dato, esInventario = false, idPadre = null, arrayContenedor = null, index = -1, pathJsonContenedor = "", padreEnLimbo = false) {
+    if (dato === null || typeof dato !== 'object') return `<span>${dato}</span>`;
+
+    if (Array.isArray(dato)) {
+        return dato.map((item, idx) => {
+            return `<div class="item-card">${detallar(item, esInventario, idPadre, dato, idx, `${pathJsonContenedor}.${idx}`, padreEnLimbo)}</div>`;
+        }).join("");
+    }
+
+    let atributos = "";
+    let buttonsHtml = "";
+    const currentIdObj = dato.idObj;
+
+    // Guardamos si este elemento concreto está en el limbo
+    const estaEnLimboEfectivo = (dato.inLimbo === true || padreEnLimbo === true);
+
+    if (!window.listasInventarioTemp) window.listasInventarioTemp = [];
+    if (!window.objetosInventarioTemp) window.objetosInventarioTemp = [];
+
+    const idObjAlmacen = window.objetosInventarioTemp.length;
+    window.objetosInventarioTemp.push(dato);
+
+    // 1. Flechas de movimiento: ¡PERMITIDAS SIEMPRE! (Incluso si está en el limbo)
+    if (arrayContenedor && arrayContenedor.length > 1 && index !== -1) {
+        const canUp = index > 0;
+        const canDown = index < arrayContenedor.length - 1;
+        const idListaAlmacen = window.listasInventarioTemp.length;
+        window.listasInventarioTemp.push(arrayContenedor);
+
+        buttonsHtml += `
+            <button class="btn-sm" style="background:#636e72; opacity:${canUp ? 1 : 0.3}" 
+                onclick="ejecutarMovimiento(${idListaAlmacen}, ${index}, -1)" ${!canUp ? 'disabled' : ''}>▲</button>
+            <button class="btn-sm" style="background:#636e72; opacity:${canDown ? 1 : 0.3}" 
+                onclick="ejecutarMovimiento(${idListaAlmacen}, ${index}, 1)" ${!canDown ? 'disabled' : ''}>▼</button>
+        `;
+    }
+
+    // 2. Botones condicionales de control de ubicación (In, Out, Limbo, Recuperar)
+    if (currentIdObj !== undefined) {
+        if (dato.inLimbo === true) {
+            // El contenedor raíz en el limbo muestra su botón para recuperar
+            buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recuperar" onclick="toggleLimboReferencia(${idObjAlmacen})">🔄 Recuperar</button> `;
+        } else if (padreEnLimbo === true) {
+            // SI EL PADRE ESTÁ EN EL LIMBO: Ocultamos In, Out y Limbo para los hijos (evita duplicaciones raras)
+        } else {
+            // EN EL MUNDO REAL: Comportamiento íntegro normal
+            if (!esInventario) {
+                buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recoger" onclick="recogerObjetoReferencia(${idObjAlmacen})">📥 Recoger</button> `;
+            } else if (esInventario && idPadre === null) {
+                buttonsHtml += `<button class="btn-sm" style="background:#e74c3c" title="Soltar" onclick="soltarObjetoReferencia(${idObjAlmacen})">📤 Soltar</button> `;
             }
-            let atributos = "";
-            let buttonsHtml = "";
-            const currentIdObj = dato.idObj;
-            if (esInventario && arrayContenedor && arrayContenedor.length > 1 && index !== -1) {
-                const canUp = index > 0;
-                const canDown = index < arrayContenedor.length - 1;
-                const arrayStr = encodeURIComponent(JSON.stringify(arrayContenedor));
-                buttonsHtml += `<button class="btn-sm" style="background:#636e72; opacity:${canUp ? 1 : 0.3}" onclick="moverPosicionDirecta('${arrayStr}', ${index}, -1)" ${!canUp ? 'disabled' : ''}>▲</button><button class="btn-sm" style="background:#636e72; opacity:${canDown ? 1 : 0.3}" onclick="moverPosicionDirecta('${arrayStr}', ${index}, 1)" ${!canDown ? 'disabled' : ''}>▼</button>`;
+            buttonsHtml += `<button class="btn-sm" style="background:#3498db" onclick="abrirSelectorContenedoresReferencia(${idObjAlmacen})">📦 In</button> `;
+            if (idPadre !== null) {
+                buttonsHtml += `<button class="btn-sm" style="background:#e67e22" title="Sacar al exterior" onclick="moveFromContainer(${currentIdObj}, ${idPadre})">📦 Out</button>`;
             }
-            if (currentIdObj !== undefined) {
-                if (contextoEspecial !== 'LIMBO') {
-                    if (!esInventario) {
-                        buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recoger" onclick="recogerObjeto(${currentIdObj})">📥 Recoger</button> `;
-                    }
-                    else if (esInventario && idPadre === null) {
-                        buttonsHtml += `<button class="btn-sm" style="background:#e74c3c" title="Soltar" onclick="soltarObjeto(${currentIdObj})">📤 Soltar</button> `;
-                    }
-                    buttonsHtml += `<button class="btn-sm" style="background:#3498db" onclick="abrirSelectorContenedores(${currentIdObj})">📦 In</button> `;
-                }
-                if (idPadre !== null && contextoEspecial !== 'LIMBO') {
-                    buttonsHtml += `<button class="btn-sm" style="background:#e67e22" title="Sacar al exterior" onclick="moveFromContainer(${currentIdObj}, ${idPadre})">📦 Out</button>`;
-                }
-                if (contextoEspecial === 'LIMBO') {
-                    buttonsHtml += `<button class="btn-sm" style="background:#27ae60" onclick="toggleLimbo(${currentIdObj}, 'LIMBO')">🔄 Recuperar</button>`;
-                } else {
-                    buttonsHtml += `<button class="btn-sm" style="background:#9b59b6" onclick="toggleLimbo(${currentIdObj})">🌌 Limbo</button>`;
-                }
-                buttonsHtml += `<button class="btn-sm" onclick="eliminarObjeto(${currentIdObj})">🗑️</button>`;
-            }
-            for (const [k, v] of Object.entries(dato)) {
-                if (k === 'idObj') {
-                    atributos = `<div style="color:#f1c40f; font-weight:bold; font-size:0.9em;">#ID: ${v}</div>` + atributos;
-                    continue;
-                }
-                if (v === null || k === 'inLimbo') continue;
-                if (k === 'last_seen' && typeof v === 'object') {
-                    atributos += `<div style="color:#9b59b6; font-size:0.85em;">📍 Visto en: ${v.area} > ${v.miniArea}</div>`;
-                }
-                else if (k === 'items' || k === 'content' || k === 'inv' || (Array.isArray(v) && k !== 'detectedCharsNearbyList')) {
-                    const contenedorActualID = (dato.idObj !== undefined && dato.idObj !== null) ? dato.idObj : idPadre;
-            atributos += `<div class="inventory-box" style="margin-top:5px;">
-                <strong class="editable-val" style="color:var(--accent); cursor:pointer; border-bottom:1px dashed var(--accent);" 
-                        onclick="habilitarEdicionInventario(this, '${k}', ${contenedorActualID})">
-                    ${k}:
-                </strong>
-                ${detallar(v, true, contextoEspecial, contenedorActualID, v, -1)}
-            </div>`;
-                } else {
-                    atributos += `<div>
-        <strong style="color:#aaa">${k}:</strong> 
-        <span class="editable-val" style="cursor:pointer; border-bottom:1px dashed #555;" 
-              onclick="habilitarEdicionInventario(this, '${k}', ${dato.idObj})">
-            ${JSON.stringify(v)}
-        </span>
-    </div>`;
-                }
-            }
-            return `<div class="item-row" style="border-bottom: 1px solid #333; padding: 5px 0;"><div class="item-info">${atributos}</div><div class="item-actions">${buttonsHtml}</div></div>`;
+            
+            const padreIdCalculado = (idPadre === null && esInventario) ? document.getElementById('charSelect').value : idPadre;
+            buttonsHtml += `<button class="btn-sm" style="background:#9b59b6" onclick="toggleLimboReferencia(${idObjAlmacen}, ${padreIdCalculado !== null ? `'${padreIdCalculado}'` : 'null'})">🌌 Limbo</button>`;
         }
+    }
+
+    // 3. Botón Eliminar: ¡PERMITIDO SIEMPRE! (Te deja borrar cosas dentro del limbo)
+    if (arrayContenedor && index !== -1) {
+        const idListaAlmacen = window.listasInventarioTemp.length;
+        window.listasInventarioTemp.push(arrayContenedor);
+        buttonsHtml += `<button class="btn-sm" style="background:#ff4757;" onclick="eliminarObjetoPorReferencia(${idListaAlmacen}, ${index})">🗑️</button>`;
+    }
+
+    // 4. Listado y mapeo de atributos visibles
+    for (const [k, v] of Object.entries(dato)) {
+        if (k === 'idObj') {
+            atributos = `<div style="color:#f1c40f; font-weight:bold; font-size:0.9em;">#ID: ${v}</div>` + atributos;
+            continue;
+        }
+        if (v === null || k === 'inLimbo') continue;
+
+        if (k === 'last_seen') {
+            let procedenciaTexto = "";
+            if (v && v.type && v.id) {
+                let tipoIcono = v.type === 'object' ? '📦 Objeto' : (v.type === 'char' ? '👤 Personaje' : '🗺️ SubÁrea');
+                procedenciaTexto = `<span style="color:#00d2d3; font-weight:bold;">${tipoIcono}: ${v.id}</span>`;
+            } else {
+                procedenciaTexto = `<span style="color:#ff7675;">Desconocida</span>`;
+            }
+            
+            atributos += `
+                <div style="margin-top: 2px; font-size: 0.9em; background: rgba(0,0,0,0.2); padding: 2px 5px; border-radius:3px;">
+                    <strong style="color:#aaa;">📍 Origen:</strong> ${procedenciaTexto}
+                </div>`;
+            continue;
+        }
+
+        if (k === 'items' || k === 'content' || k === 'inv' || (Array.isArray(v) && k !== 'detectedCharsNearbyList')) {
+            const contenedorActualID = dato.idObj || idPadre;
+            
+            // Ocultamos el botón '+ Añadir' si el contenedor está en el limbo
+            const botonAnadirHtml = estaEnLimboEfectivo
+                ? '' 
+                : `<button class="btn-sm" style="background:#27ae60; padding:2px 6px; font-size:0.75em;" 
+                           onclick="crearObjetoEnReferencia(${idObjAlmacen}, '${k}')">+ Añadir</button>`;
+
+            atributos += `
+                <div class="inventory-box" style="margin-top:5px; border-left: 2px dashed #555; padding-left: 5px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 3px;">
+                        <div>
+                            <strong style="color:var(--accent); cursor:pointer; border-bottom:1px dashed #555;" 
+                                    class="editable-val" 
+                                    onclick="habilitarEdicionInventarioMenu(this, '${k}', ${idObjAlmacen})">
+                                📦 ${k}
+                            </strong>
+                            <button class="btn-sm" style="background:transparent; color:#555; font-size:0.7em; padding:0 3px;" 
+                                    onclick="eliminarAtributoReferencia(${idObjAlmacen}, '${k}')">x</button>
+                        </div>
+                        ${botonAnadirHtml}
+                    </div>
+                    ${detallar(v, true, contenedorActualID, v, -1, `${pathJsonContenedor}.${k}`, estaEnLimboEfectivo)}
+                </div>`;
+        } else {
+            atributos += `
+                <div>
+                    <strong style="color:#aaa">${k}:</strong> 
+                    <span class="editable-val" style="cursor:pointer; border-bottom:1px dashed #555;" onclick="habilitarEdicionInventarioMenu(this, '${k}', ${idObjAlmacen})">
+                        ${JSON.stringify(v)}
+                    </span>
+                    <button class="btn-sm" style="background:transparent; color:#555; font-size:0.7em; padding:0 3px;" onclick="eliminarAtributoReferencia(${idObjAlmacen}, '${k}')">x</button>
+                </div>`;
+        }
+    }
+
+    return `<div class="item-row" style="border-bottom: 1px solid #333; padding: 5px 0;"><div class="item-info">${atributos}</div><div class="item-actions">${buttonsHtml}</div></div>`;
+}
         function setOption(texto) {
             document.getElementById('customOpt').value = texto;
         }
@@ -371,28 +439,40 @@
             const engineRules = context.engineRules;
             const filteredData = context.dynamicData;
             const action = context.action;
-            const instructions = `1. Actúa como Master atmosférico. Lenguaje inmersivo pero sencillo. Cantidad de opciones sugeridas según el contexto, preferible 3.
-2. Si un valor es 'null' (ej. weather), defínelo según contexto.
-3. Actualiza 'turnActionPlayer_id' secuencialmente tras cada acción. Aplica 'worldMechanics' en general solo cuando sea el turno del último jugador en la lista.
-4. 'lastNarration.text' debe contener exactamente el mismo texto que me narres en el chat. No resumas, no omitas detalles atmosféricos ni pistas sensoriales. El JSON debe ser un espejo fiel de la historia.
-5. Para objetos nuevos usa el primer ID de 'reusableObjIds' y quítalo de la lista. Si está vacía, usa 'lastGeneratedObjId' + 1 y actualízalo. Si un objeto se destruye o consume, añade su ID a 'reusableObjIds'. Prohibido crear una nueva ID de objeto sin instanciarlo en algún lugar (mínimo con 'idObj' y 'n', opcional 'q' y más...)
-6. No inventes contenido técnico (inv) de áreas marcadas como "Contenido oculto"; solo narra la llegada.
-5. INTEGRIDAD JSON: Devuelve solo los cambios en 'dynamicData'. Prohibido resumir inventarios o borrar sus IDs internos. Objetos contenedores llevan su contenido en 'items'. Prohibido modificar memories, usa 'IAaddMemories' para nuevos recuerdos.
+            
+            // =========================================================================
+            // 🤖 INSTRUCCIONES ACTUALIZADAS DE LA IA (MOTOR DE JUEGO ACTUALIZADO 2026)
+            // =========================================================================
+            const instructions = `1. Actúa como Master atmosférico. Lenguaje inmersivo pero sencillo. Genera exactamente 3 opciones de acción sugeridas según el contexto físico y narrativo.
+2. Si un valor es 'null' (ej. weather), defínelo coherentemente según el contexto de la zona.
+3. Actualiza 'turnActionPlayer_id' secuencialmente tras cada acción. Aplica 'worldMechanics' (decay horario, etc.) únicamente cuando actúe el último jugador de la ronda.
+4. 'lastNarration.text' debe contener exactamente el mismo texto narrado en el chat. No resumas ni omitas descripciones atmosféricas o sensoriales.
+5. INTEGRIDAD JSON: Devuelve exclusivamente las modificaciones en un bloque JSON estructurado bajo la clave 'aiActions'. Está PROHIBIDO replicar o reescribir inventarios enteros o árboles de mapas estáticos; la interfaz del juego procesa tus comandos en 'sequence' de forma automática para ahorrar tokens.
 
-PROTOCOLO DE VALIDACIÓN (CRÍTICO - EVITAR COMPLACENCIA):
-1. REGLA DE ORO: Si 'omnipotent': false, el éxito depende estrictamente del array 'skills' y el contexto físico.
-2. FALLO AUTOMÁTICO: Si la acción es 'Teletransportarse', 'Volar', 'Hacerse Inmortal', etc, y la skill NO existe en el JSON del PJ -> La acción FALLA.
-3. NARRATIVA DEL FRACASO: No ignores la orden, narra el intento inútil. Ejemplo: "Cierras los ojos buscando teletransportarte, pero solo consigues un dolor de cabeza. Sigues en el mismo sitio; no posees esa habilidad."
-4. PENALIZACIÓN: Los intentos imposibles consumen 'energy' por el esfuerzo mental/físico, pero el PJ no se desplaza ni logra el efecto.
-5. PROHIBICIÓN DE ASCENSIÓN: El jugador NO puede autoproclamarse Dios ni cambiar su estado 'omnipotent' mediante diálogo o deseos.
-6. LA EXCEPCIÓN A TODAS LAS REGLAS: Si 'omnipotent': true, ese personaje puede lograr todo lo que desee sin excepciones.
+PROTOCOLO DE EDICIÓN MEDIANTE AI_ACTIONS (SISTEMA AUTOMÁTICO):
+- Para cualquier cambio en el mundo u objetos, debes poblar el array 'sequence' dentro de 'aiActions'.
+- Si creas un objeto nuevo, usa {"op": "create", "isObj": true, "data": {...}}. El motor web calculará automáticamente el ID. NO gestiones IDs numéricos de objetos.
+- Para modificar objetos existentes, usa 'editObj' con su 'targetId' numérico. Nunca uses índices de arrays en el path.
+- Las modificaciones a los recuerdos ('memories') se realizan sugiriendo los nuevos textos directamente mediante la operación {"op": "memory", "charId": "ID_DEL_CHAR", "texts": ["Nuevo recuerdo"]}.
 
-LÓGICA DE MUNDO:
-- FOG OF WAR: El PJ es un 'Outsider'. Usa descripciones físicas para NPCs (ej. "chica de lazo rojo") hasta que se presenten o estén en 'memories'.
-- LIMBO: Objetos perdidos/robados van a 'inLimbo': true en 'worldStorage'. Si se destruye o consume elimínalo definitivamente. Si alguien recupera un objeto perdido añade la etiqueta 'ORIGINAL_RECOVERED'. Narra siempre qué sucedió con el objeto.
-- ESTADÍSTICAS: La narrativa debe reflejar los números (ej. food > 80% = saciedad; energy < 20% = fatiga extrema).
-- PERSONAJES: Si el jugador se encuentra con un nuevo NPC, instancia siempre las identidades reales aunque el jugador lo desconozca (Prohibido instanciar unknown) en 'Chars' usando todos los atributos de 'id_tplMANDATORY' excepto 'tplReimuDefault'. Usa 'detectedCharsNearbyList' para registrar quién nota a quién y si se reconocen ('recognized'). Debes quitar a los personajes de detectedCharsNearbyList que dejen de detectarlo (se alejen lo suficiente).
-- DESPLAZAMIENTO: Si el jugador cambia de área o miniArea, actualiza 'currentArea_id' y 'currentMiniArea_id', actualiza detectedCharsNearbyList. No inventes contenido técnico (inv) de áreas marcadas como "Contenido oculto"; solo narra la llegada.`;
+SISTEMA DE DOS PASOS (FANTASMA / TURNO REAL):
+1. FASE FANTASMA (ESPIONAJE): Si en este prompt detectas que necesitas información oculta de un 'subArea' o personaje lejano para planificar tu narrativa, responde ÚNICAMENTE con una operación {"op": "editRadar", "addChars": ["id"], "addWorld": ["id"]} en tu 'sequence' y detén tu narración ahí. El motor recargará tus datos de inmediato sin avanzar el tiempo ni consumir recursos.
+2. FASE DE TURNO REAL: Si ya posees toda la información necesaria en el contexto dinámico provisto para resolver la acción del jugador, ejecuta tus comandos físicos habituales, narra los acontecimientos con riqueza atmosférica y actualiza los estados correspondientes.
+
+SISTEMA DE RADAR EXTENDIDO Y ESPIONAJE (additionalIdsToSeeInfoForAI):
+- Tienes acceso al objeto de control de datos 'additionalIdsToSeeInfoForAI'. Los IDs contenidos aquí desbloquean estadísticas ocultas por el Fog of War en el siguiente prompt.
+- Si la trama requiere que "espíes", monitorices o te prepares para instanciar/moverte hacia un subArea lejana o un personaje oculto, DEBES añadir sus IDs exactos usando una operación {"op": "editRadar", "addChars": ["id1"], "addWorld": ["id2"], "removeChars": ["id3"], "removeWorld": ["id4"]} dentro de tu 'sequence'.
+- Mantén la lista limpia: elimina los IDs que ya no influyan en la escena actual para ahorrar memoria del mundo.
+
+PROTOCOLO DE VALIDACIÓN (REGLA DE ORO):
+1. Si 'omnipotent': false, el éxito de las acciones depende estrictamente de las 'skills' del jugador y el contexto físico. Las acciones sin la skill correspondiente FALLAN consumiendo energía.
+2. Si 'omnipotent': true, el personaje goza de omnipotencia narrativa y sus acciones logran lo que se proponga con estilo atmosférico.
+
+LÓGICA DE MUNDO Y GEOGRAFÍA:
+- FOG OF WAR: El jugador es un 'Outsider'. Usa descripciones físicas para NPCs no identificados hasta que se registren en sus 'memories' o sean revelados por el radar.
+- MOVIMIENTO: Si el jugador cambia de ubicación, modifica su 'currentSubArea_id' apuntando al ID exacto del mapa tridimensional de subAreas. Actualiza siempre el array 'detectedCharsNearbyList' en consecuencia.
+- ESTADÍSTICAS: Sincroniza la narrativa con los valores numéricos (ej: food > 80% = saciedad; hp a 0 = Permadeath).`;
+
             const singlePromptTemplate = `SISTEMA: Touhou Survival RPG (Engine Mode)\nREGLAS MOTOR:\n${instructions}\n\n${JSON.stringify(engineRules, null, 1)}\n\nCONTEXTO DINÁMICO (FILTRADO):\n${JSON.stringify(filteredData, null, 1)}\n\nACCIÓN DEL JUGADOR:\n> ${action}`;
             if (singlePromptTemplate.length < maxCharsPerPart) {
                 return [{
@@ -439,101 +519,182 @@ LÓGICA DE MUNDO:
             });
             return prompts;
         }
-        function renderPromptUI(prompts) {
-            const container = document.getElementById('prompt-area');
-            container.innerHTML = ""; // Limpiar
-            prompts.forEach((p, index) => {
-                const btn = document.createElement('button');
-                btn.innerText = `Copiar ${p.title}`;
-                btn.onclick = () => {
-                    const finalText = `${p.instruction}\n\n${p.content}`;
-                    navigator.clipboard.writeText(finalText);
-                    btn.style.background = "#4CAF50";
-                    btn.innerText = "¡Copiado!";
-                };
-                container.appendChild(btn);
-            });
-        }
-        function copySpecificPrompt(base64Data, btn) {
-            const decoded = decodeURIComponent(escape(atob(base64Data)));
-            const textArea = document.getElementById('promptTextArea');
-            textArea.value = decoded;
-            textArea.select();
-            document.execCommand('copy');
-            const originalText = btn.innerText;
-            btn.innerText = "¡Copiado! ✓";
-            btn.style.background = "#27ae60";
-            setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.background = originalText.includes("PARTE 1") ? "#ff4757" : "#444";
-            }, 2000);
-        }
+
         function getHtmlGeneratedPrompt(dynamicData, selectedId) {
             const filteredData = JSON.parse(JSON.stringify(dynamicData));
-            const areaIdTarget = dynamicData.chars[selectedId].currentArea_id;
-            const miniIdTarget = dynamicData.chars[selectedId].currentMiniArea_id;
-            const obtenerResumenMiniArea = (contenido) => {
-                if (!Array.isArray(contenido) || contenido.length === 0) return "Vacia (Contenido Editable)";
-                const extraerTodosLosIds = (lista) => {
-                    let idsEncontrados = [];
-                    lista.forEach(obj => {
-                        if (obj && typeof obj === 'object') {
-                            if (obj.idObj !== undefined) idsEncontrados.push(obj.idObj);
-                            const subContenido = obj.items || obj.content || obj.inv;
-                            if (Array.isArray(subContenido)) idsEncontrados = idsEncontrados.concat(extraerTodosLosIds(subContenido));
-                        }
-                    });
-                    return idsEncontrados;
-                };
-                const ids = extraerTodosLosIds(contenido);
-                return ids.length > 0 ? `(Contenido oculto) (Contiene IDs: ${ids.join(", ")})` : `(Contenido oculto) (No vacía, sin objetos con ID)`;
+            const pj = filteredData.chars[selectedId];
+
+            const playerSubAreaTarget = (pj.currentSubArea_id || "").trim();
+
+            const extraWorldIds = (filteredData.additionalIdsToSeeInfoForAI && filteredData.additionalIdsToSeeInfoForAI.worldStorage)
+                ? filteredData.additionalIdsToSeeInfoForAI.worldStorage.map(id => String(id).trim())
+                : [];
+            
+            const extraCharIds = (filteredData.additionalIdsToSeeInfoForAI && filteredData.additionalIdsToSeeInfoForAI.chars)
+                ? filteredData.additionalIdsToSeeInfoForAI.chars.map(id => String(id).trim())
+                : [];
+
+            const contieneZonaFocal = (subAreasObj) => {
+                if (!subAreasObj || typeof subAreasObj !== 'object') return false;
+                const keys = Object.keys(subAreasObj);
+                for (let i = 0; i < keys.length; i++) {
+                    const key = keys[i].trim();
+                    if (key === playerSubAreaTarget || extraWorldIds.includes(key)) {
+                        return true;
+                    }
+                    if (subAreasObj[keys[i]].subAreas && contieneZonaFocal(subAreasObj[keys[i]].subAreas)) {
+                        return true;
+                    }
+                }
+                return false;
             };
-            Object.keys(filteredData.worldStorage).forEach(aId => {
-                if (aId === "SYSTEM_LOST_FOUND") { delete filteredData.worldStorage[aId]; return; }
-                const area = filteredData.worldStorage[aId];
-                if (aId.trim() === areaIdTarget.trim()) {
-                    if (area.miniAreas) {
-                        Object.keys(area.miniAreas).forEach(mId => {
-                            if (mId.trim() !== miniIdTarget.trim()) area.miniAreas[mId] = obtenerResumenMiniArea(area.miniAreas[mId]);
-                        });
+
+            let dueñosDePropiedad = { weather: null, freq: null, occ: null, rare: null };
+
+            const mapearDueñosDePropiedades = (subAreasContainer, idPadre) => {
+                if (!subAreasContainer || typeof subAreasContainer !== 'object') return;
+                Object.keys(subAreasContainer).forEach(subId => {
+                    const subArea = subAreasContainer[subId];
+                    const claveLimpia = subId.trim();
+                    const enCaminoActivo = (claveLimpia === playerSubAreaTarget) || extraWorldIds.includes(claveLimpia) || contieneZonaFocal(subArea.subAreas);
+
+                    if (enCaminoActivo) {
+                        if (subArea.weather) dueñosDePropiedad.weather = claveLimpia;
+                        if (subArea.freq && subArea.freq.length > 0) dueñosDePropiedad.freq = claveLimpia;
+                        if (subArea.occ && subArea.occ.length > 0) dueñosDePropiedad.occ = claveLimpia;
+                        if (subArea.rare && subArea.rare.length > 0) dueñosDePropiedad.rare = claveLimpia;
+                        if (subArea.subAreas) mapearDueñosDePropiedades(subArea.subAreas, claveLimpia);
                     }
+                });
+            };
+
+            const limpiarEstructuraConFocoYDueños = (subAreasContainer, areaMacroId) => {
+                if (!subAreasContainer || typeof subAreasContainer !== 'object') return;
+                Object.keys(subAreasContainer).forEach(subId => {
+                    const subArea = subAreasContainer[subId];
+                    const claveLimpia = subId.trim();
+                    if ((claveLimpia === playerSubAreaTarget) || extraWorldIds.includes(claveLimpia)) {
+                        if (dueñosDePropiedad.weather !== claveLimpia) delete subArea.weather;
+                        if (dueñosDePropiedad.freq !== claveLimpia) delete subArea.freq;
+                        if (dueñosDePropiedad.occ !== claveLimpia) delete subArea.occ;
+                        if (dueñosDePropiedad.rare !== claveLimpia) delete subArea.rare;
+                        if (subArea.subAreas) limpiarEstructuraConFocoYDueños(subArea.subAreas, areaMacroId);
+                    } else if (contieneZonaFocal(subArea.subAreas)) {
+                        if (subArea.name) delete subArea.name;
+                        if (subArea.desc) delete subArea.desc;
+                        if (subArea.items) delete subArea.items;
+                        if (dueñosDePropiedad.weather !== claveLimpia) delete subArea.weather;
+                        if (dueñosDePropiedad.freq !== claveLimpia) delete subArea.freq;
+                        if (dueñosDePropiedad.occ !== claveLimpia) delete subArea.occ;
+                        if (dueñosDePropiedad.rare !== claveLimpia) delete subArea.rare;
+                        if (subArea.subAreas) limpiarEstructuraConFocoYDueños(subArea.subAreas, areaMacroId);
+                    } else {
+                        subAreasContainer[subId] = {};
+                    }
+                });
+            };
+
+            Object.keys(filteredData.worldStorage).forEach(areaId => {
+                if (areaId === "SYSTEM_LOST_FOUND") { delete filteredData.worldStorage[areaId]; return; }
+                const area = filteredData.worldStorage[areaId];
+                if (contieneZonaFocal(area.subAreas)) {
+                    dueñosDePropiedad = {
+                        weather: area.weather ? areaId : null,
+                        freq: (area.freq && area.freq.length > 0) ? areaId : null,
+                        occ: (area.occ && area.occ.length > 0) ? areaId : null,
+                        rare: (area.rare && area.rare.length > 0) ? areaId : null
+                    };
+                    if (area.subAreas) mapearDueñosDePropiedades(area.subAreas, areaId);
+                    if (dueñosDePropiedad.weather !== areaId) delete area.weather;
+                    if (dueñosDePropiedad.freq !== areaId) delete area.freq;
+                    if (dueñosDePropiedad.occ !== areaId) delete area.rare;
+                    if (dueñosDePropiedad.rare !== areaId) delete area.rare;
+                    if (area.subAreas) limpiarEstructuraConFocoYDueños(area.subAreas, areaId);
                 } else {
-                    if (area.miniAreas) {
-                        const resumenArea = { note: "Distinta Area", miniAreas: {} };
-                        Object.keys(area.miniAreas).forEach(mId => {
-                            resumenArea.miniAreas[mId] = obtenerResumenMiniArea(area.miniAreas[mId]);
-                        });
-                        filteredData.worldStorage[aId] = resumenArea;
-                    }
+                    filteredData.worldStorage[areaId] = {};
                 }
             });
+
             const allDetectedIds = new Set();
-            Object.values(filteredData.chars).forEach(pj => {
-                if (pj.isPlayer && pj.detectedCharsNearbyList) {
-                    pj.detectedCharsNearbyList.forEach(detected => allDetectedIds.add(String(detected.nearby_pj_id)));
+            Object.values(filteredData.chars).forEach(character => {
+                if (character.isPlayer && character.detectedCharsNearbyList) {
+                    character.detectedCharsNearbyList.forEach(detected => allDetectedIds.add(String(detected.nearby_pj_id)));
                 }
             });
+
             Object.keys(filteredData.chars).forEach(id => {
-                const pj = filteredData.chars[id];
-                if (id !== String(dynamicData.worldState.turnActionPlayer_id) && !pj.isPlayer && !allDetectedIds.has(String(id))) {
-                    pj.state = `(OCULTO: última vez visto en su ubicación registrada) ${pj.state || ''}`;
-                }
+                const character = filteredData.chars[id];
+                
+                // 1. El jugador activo actual NUNCA se oculta
+                if (id === String(dynamicData.worldState.turnActionPlayer_id)) return;
+                
+                // 2. Si el personaje es un jugador principal o está detectado cerca, se conserva completo
+                if (character.isPlayer || allDetectedIds.has(String(id))) return;
+
+                // 3. Si el ID está forzado explícitamente por la trama en el canal de espionaje, se conserva completo
+                if (extraCharIds.includes(String(id).trim())) return; 
+
+                // 🔥 TU RECOMENDACIÓN: Si pasó todos los filtros anteriores, el personaje está verdaderamente oculto.
+                // Lo reducimos a un objeto vacío {} para denotar su existencia pero ahorrar el 100% de sus tokens.
+                filteredData.chars[id] = {};
             });
+
+            if (filteredData.worldState.lastGeneratedObjId !== undefined) delete filteredData.worldState.lastGeneratedObjId;
+            if (filteredData.worldState.reusableObjIds !== undefined) delete filteredData.worldState.reusableObjIds;
+            
+            // CONSERVADO: Mantenemos la propiedad visible para que la IA entienda qué IDs están activos en su radar extendido.
+            // El sincronizador web de tu backend/interfaz procesará los cambios si la IA edita este objeto en el JSON de respuesta.
+
             const engineRules = {
                 difficultyIntention: gameData.possibleDifficulties[dynamicData.worldState.currDiff],
                 engineConfig: gameData.engineConfig,
                 worldMechanics: gameData.worldMechanics
             };
-            const fullContext = { engineRules: engineRules, dynamicData: filteredData, action: dynamicData.worldState.lastNarration.OptChosen };
+
+            const fullContext = {
+                engineRules: engineRules,
+                dynamicData: filteredData,
+                action: dynamicData.worldState.lastNarration.OptChosen
+            };
+
             const allPrompts = generateMultiprompt(fullContext, 30000);
             let buttonsHtml = `<div style="display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px;">`;
+
             allPrompts.forEach((p, idx) => {
                 const fullText = (p.instruction ? p.instruction + "\n\n" : "") + p.content;
                 const safeData = btoa(unescape(encodeURIComponent(fullText)));
                 buttonsHtml += `<button class="nav-btn" style="background: ${allPrompts.length === 1 ? '#27ae60' : '#444'}" onclick="copySpecificPrompt('${safeData}', this)">${allPrompts.length === 1 ? 'Copiar Prompt Único' : 'Copiar ' + p.title}</button>`;
             });
             buttonsHtml += `</div>`;
-            return `<h3>✅ Prompt para la IA</h3>
+
+// --- NUEVO: DETECTOR VISUAL DE FASE PARA EL JUGADOR ---
+const estaEspiandoChars = extraCharIds.length > 0;
+            const estaEspiandoWorld = extraWorldIds.length > 0;
+            
+            let bannerFaseHtml = "";
+            if (estaEspiandoChars || estaEspiandoWorld) {
+                bannerFaseHtml = `
+                    <div style="background: rgba(179, 136, 255, 0.1); border-left: 4px solid #b388ff; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+                        <span style="color: #b388ff; font-weight: bold; font-size: 13px;">👁️ MATRIZ EN MODO ESPIONAJE ACTIVO</span>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #aaa;">
+                            La IA recibirá acceso prioritario a: 
+                            ${estaEspiandoChars ? `<b>Personajes:</b> [${extraCharIds.join(', ')}] ` : ''}
+                            ${estaEspiandoWorld ? `<b>Zonas:</b> [${extraWorldIds.join(', ')}]` : ''}.
+                            Esto le permite planificar tramas complejas o instanciar elementos con precisión milimétrica.
+                        </p>
+                    </div>`;
+            } else {
+                bannerFaseHtml = `
+                    <div style="background: rgba(39, 174, 96, 0.1); border-left: 4px solid #27ae60; padding: 10px; margin-bottom: 15px; border-radius: 4px;">
+                        <span style="color: #27ae60; font-weight: bold; font-size: 13px;">🛡️ MATRIZ EN MODO CONTEXTO LOCAL</span>
+                        <p style="margin: 4px 0 0 0; font-size: 11px; color: #aaa;">
+                            La IA solo ve el entorno geográfico inmediato del jugador activo para optimizar tokens al máximo.
+                        </p>
+                    </div>`;
+            }
+
+            return `<h3>✅ Prompt para la IA (Sistema de Espionaje y Radar Activo)</h3>
+        ${bannerFaseHtml}
         ${buttonsHtml}
         <textarea id="promptTextArea" readonly placeholder="Haz clic en un botón para copiar..."
             style="width: 100%; height: 200px; background: #000; color: #00ff00; border: 1px solid #444; padding: 10px; font-family: monospace;"></textarea>
@@ -541,70 +702,181 @@ LÓGICA DE MUNDO:
         <button class="nav-btn" style="background: #555;" onclick="resetOption()">Cambiar Acción</button>
         <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Guardar Progreso (JSON)</button>`;
         }
-        function toggleLimbo(objId, currentPath = null) {
-            if (!gameData) return;
-            const root = gameData.dynamicData;
-            const limboArray = root.worldStorage.SYSTEM_LOST_FOUND.miniAreas.Contenedor_Global;
-            const sObjId = String(objId).trim();
-            if (currentPath === 'LIMBO') {
-                const target = findItemContext(objId);
-                if (!target) return;
-                const obj = target.item;
-                const lastArea = obj.last_seen.area;
-                const lastMini = obj.last_seen.miniArea;
-                const limpiarObjeto = (o) => { delete o.inLimbo; delete o.last_seen; return o; };
-                const msg = `El objeto fue visto por última vez en: ${lastArea} (${lastMini}).\n\n` +
-                    `¿Dónde quieres devolverlo?\n` +
-                    `- Escribe 'S' para el SUELO (Área/MiniÁrea original)\n` +
-                    `- Escribe 'I' para el INVENTARIO de un personaje\n` +
-                    `- Cancela para salir.`;
-                const choice = prompt(msg, "S") ?.toUpperCase();
-                if (choice === 'S') {
-                    if (root.worldStorage[lastArea] ?.miniAreas[lastMini]) {
-                        root.worldStorage[lastArea].miniAreas[lastMini].push(limpiarObjeto(obj));
-                        target.array.splice(target.index, 1);
-                        alert(`Devuelto al suelo en ${lastArea} > ${lastMini}`);
-                    } else {
-                        alert("Error: El área original ya no existe.");
+
+        function toggleLimboReferencia(idObjAlmacen, idPadreUI = null) {
+            // 1. Recuperamos el objeto real desde el almacén de memoria temporal
+            const objetoTarget = window.objetosInventarioTemp[idObjAlmacen];
+            if (!objetoTarget) {
+                alert("❌ Error: No se pudo localizar el objeto en la memoria actual.");
+                return;
+            }
+
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+            if (!pj) return;
+
+            // 2. Aseguramos y estructuramos el nodo jerárquico del Limbo
+            if (!gameData.dynamicData.worldStorage) gameData.dynamicData.worldStorage = {};
+            if (!gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND) {
+                gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND = {
+                    note: "Contenedor de objetos que han desaparecido de la vista del jugador pero existen en el mundo.",
+                    subAreas: {}
+                };
+            }
+            const limboRoot = gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND;
+            if (!limboRoot.subAreas) limboRoot.subAreas = {};
+
+            if (!limboRoot.subAreas.Contenedor_Global) {
+                limboRoot.subAreas.Contenedor_Global = { items: [] };
+            }
+            if (Array.isArray(limboRoot.subAreas.Contenedor_Global)) {
+                limboRoot.subAreas.Contenedor_Global = { items: [] };
+            }
+            if (!limboRoot.subAreas.Contenedor_Global.items) {
+                limboRoot.subAreas.Contenedor_Global.items = [];
+            }
+            const arrayLimboFinal = limboRoot.subAreas.Contenedor_Global.items;
+
+            // --- CASO A: EL OBJETO YA ESTÁ EN EL LIMBO -> RECUPERAR A SU ORIGEN DINÁMICO ---
+            if (objetoTarget.inLimbo === true) {
+                const infoOrigen = objetoTarget.last_seen;
+                let recuperadoConExito = false;
+
+                if (infoOrigen && infoOrigen.id) {
+                    // A.1: Regresar al interior de un Objeto Contenedor (Mochila, Cofre, etc.)
+                    if (infoOrigen.type === "object") {
+                        let contenedorDestino = null;
+                        let llaveInventarioDestino = "items";
+
+                        function buscarObjetoPadre(padre) {
+                            if (contenedorDestino || !padre || typeof padre !== 'object') return;
+                            if (Array.isArray(padre)) {
+                                padre.forEach(buscarObjetoPadre);
+                            } else {
+                                if (padre.idObj !== undefined && String(padre.idObj) === String(infoOrigen.id)) {
+                                    contenedorDestino = padre;
+                                    if (padre.content) llaveInventarioDestino = "content";
+                                    else if (padre.inv) llaveInventarioDestino = "inv";
+                                    else llaveInventarioDestino = "items";
+                                    return;
+                                }
+                                for (let k in padre) {
+                                    if (typeof padre[k] === 'object') buscarObjetoPadre(padre[k]);
+                                }
+                            }
+                        }
+                        buscarObjetoPadre(gameData.dynamicData.chars);
+                        buscarObjetoPadre(gameData.dynamicData.worldStorage);
+
+                        if (contenedorDestino) {
+                            if (!contenedorDestino[llaveInventarioDestino]) contenedorDestino[llaveInventarioDestino] = [];
+                            contenedorDestino[llaveInventarioDestino].push(objetoTarget);
+                            recuperadoConExito = true;
+                            alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" ha vuelto al interior de su contenedor [#ID: ${infoOrigen.id}].`);
+                        }
                     }
-                } else if (choice === 'I') {
-                    const pjId = prompt("Escribe el ID del personaje:", "P1");
-                    if (pjId && root.chars[pjId]) {
-                        root.chars[pjId].inv.push(limpiarObjeto(obj));
-                        target.array.splice(target.index, 1);
-                        alert(`Entregado a ${pjId}`);
-                    } else {
-                        alert("Personaje no encontrado.");
+                    // A.2: Regresar al suelo de una SubÁrea del mapa
+                    else if (infoOrigen.type === "subArea") {
+                        function buscarSubAreaPorId(nodoAreas) {
+                            if (!nodoAreas || typeof nodoAreas !== 'object') return null;
+                            if (nodoAreas[infoOrigen.id]) return nodoAreas[infoOrigen.id];
+                            for (let k in nodoAreas) {
+                                if (nodoAreas[k].subAreas) {
+                                    let encontrado = buscarSubAreaPorId(nodoAreas[k].subAreas);
+                                    if (encontrado) return encontrado;
+                                }
+                            }
+                            return null;
+                        }
+                        const subAreaDestino = buscarSubAreaPorId(gameData.dynamicData.worldStorage);
+                        if (subAreaDestino) {
+                            if (!subAreaDestino.items) subAreaDestino.items = [];
+                            subAreaDestino.items.push(objetoTarget);
+                            recuperadoConExito = true;
+                            alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" regresó al suelo de [${infoOrigen.id}].`);
+                        }
+                    }
+                    // A.3: Regresar al inventario raíz de un Personaje
+                    else if (infoOrigen.type === "char") {
+                        const personajeDestino = gameData.dynamicData.chars[infoOrigen.id];
+                        if (personajeDestino) {
+                            if (!personajeDestino.inv) personajeDestino.inv = [];
+                            personajeDestino.inv.push(objetoTarget);
+                            recuperadoConExito = true;
+                            alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" regresó al inventario de [${infoOrigen.id}].`);
+                        }
                     }
                 }
-            } else {
-                const target = findItemContext(objId);
-                if (target) {
-                    let originalArea = "Desconocido";
-                    let originalMini = "Contenedor";
-                    for (let aId in root.worldStorage) {
-                        for (let mId in root.worldStorage[aId].miniAreas) {
-                            if (root.worldStorage[aId].miniAreas[mId] === target.array) {
-                                originalArea = aId;
-                                originalMini = mId;
+
+                // Si se inyectó con éxito, lo borramos del Limbo
+                if (recuperadoConExito) {
+                    const idxLimbo = arrayLimboFinal.findIndex(it => it && it.idObj === objetoTarget.idObj);
+                    if (idxLimbo !== -1) arrayLimboFinal.splice(idxLimbo, 1);
+                    delete objetoTarget.inLimbo;
+                    delete objetoTarget.last_seen;
+                } else {
+                    // Fallback si el contenedor original ya no existe en la partida
+                    if (!pj.inv) pj.inv = [];
+                    pj.inv.push(objetoTarget);
+                    const idxLimbo = arrayLimboFinal.findIndex(it => it && it.idObj === objetoTarget.idObj);
+                    if (idxLimbo !== -1) arrayLimboFinal.splice(idxLimbo, 1);
+                    delete objetoTarget.inLimbo;
+                    delete objetoTarget.last_seen;
+                    alert(`🔄 ¡Recuperado por Emergencia! Devuelto al inventario raíz de ${selectedId}.`);
+                }
+            }
+            // --- CASO B: EL OBJETO ESTÁ EN EL MUNDO -> ENVIAR AL LIMBO DETECTANDO EL ORIGEN ---
+            else {
+                let procedenciaDetectada = null;
+
+                if (idPadreUI !== null) {
+                    // Verificamos si el ID recibido de la interfaz pertenece a la lista global de personajes
+                    if (gameData.dynamicData.chars[idPadreUI] !== undefined) {
+                        procedenciaDetectada = { type: "char", id: String(idPadreUI) };
+                    } else {
+                        // Si no es un personaje, es obligatoriamente un objeto contenedor independiente (Mochila, cofre, etc.)
+                        procedenciaDetectada = { type: "object", id: String(idPadreUI) };
+                    }
+                } else {
+                    // Si no tiene idPadreUI ni viene del inventario raíz, es un objeto tirado en el suelo del mapa
+                    const areaActual = pj.currentSubArea_id || pj.currentMiniArea_id || "Gensokyo";
+                    procedenciaDetectada = { type: "subArea", id: areaActual };
+                }
+
+                // Extraemos el objeto del JSON mediante un escaneo seguro
+                let removidoExitosamente = false;
+                function removerDeCualquierLugar(padre) {
+                    if (removidoExitosamente || !padre || typeof padre !== 'object') return;
+                    if (Array.isArray(padre)) {
+                        const idx = padre.findIndex(it => it && it.idObj === objetoTarget.idObj);
+                        if (idx !== -1) {
+                            padre.splice(idx, 1);
+                            removidoExitosamente = true;
+                            return;
+                        }
+                        padre.forEach(removerDeCualquierLugar);
+                    } else {
+                        for (let key in padre) {
+                            if (key !== 'SYSTEM_LOST_FOUND' && typeof padre[key] === 'object') {
+                                removerDeCualquierLugar(padre[key]);
                             }
                         }
                     }
-                    for (let pId in root.chars) {
-                        if (root.chars[pId].inv === target.array) {
-                            originalArea = pId;
-                            originalMini = "Inventario";
-                        }
-                    }
-                    const obj = target.array.splice(target.index, 1)[0];
-                    obj.inLimbo = true;
-                    obj.last_seen = { area: originalArea, miniArea: originalMini };
-                    limboArray.push(obj);
-                    alert(`Objeto [${obj.n}] extraído y enviado al Limbo.`);
-                } else {
-                    alert("No se pudo encontrar el objeto.");
                 }
+
+                removerDeCualquierLugar(gameData.dynamicData.chars);
+                removerDeCualquierLugar(gameData.dynamicData.worldStorage);
+
+                // Lo guardamos en el Limbo con sus metadatos exactos de origen
+                objetoTarget.inLimbo = true;
+                objetoTarget.last_seen = procedenciaDetectada;
+                arrayLimboFinal.push(objetoTarget);
+
+                alert(`🌌 "${objetoTarget.n || "Objeto"}" enviado al Limbo.\nProcedencia guardada: [${procedenciaDetectada.type} -> ID: ${procedenciaDetectada.id}]`);
             }
+
+            window.objetosInventarioTemp = [];
+            window.listasInventarioTemp = [];
             updateUI();
         }
         function moveFromContainer(objId, containerId) {
@@ -617,43 +889,132 @@ LÓGICA DE MUNDO:
             }
         }
         function moveIntoContainer(objId, destId = null) {
-            if (!gameData) return;
+            if (!gameData || !gameData.dynamicData) return;
+
+            // Si por alguna razón no viene el destino, lo solicitamos
             if (!destId) {
-                destId = prompt("ID del contenedor destino:");
+                destId = prompt("Introduce el #ID numérico del objeto contenedor de destino:");
                 if (!destId) return;
             }
+
             const sObjId = String(objId).trim();
             const sDestId = String(destId).trim();
+
+            // REGLA 1: Validación de identidad propia
             if (sObjId === sDestId) {
                 alert("🚨 ERROR: No puedes meter un objeto dentro de sí mismo.");
                 return;
             }
-            const sourceTarget = findItemContext(objId);
-            const destTarget = findItemContext(destId);
-            if (!sourceTarget || !destTarget) {
-                alert("Error: No se encontró el origen o el destino.");
+
+            let objetoOrigen = null;
+            let arrayOrigen = null;
+            let indexOrigen = -1;
+
+            let objetoDestino = null;
+            let llaveInventarioDestino = null;
+
+            // Escáner pasivo en profundidad del árbol JSON (vivos en personajes y escenarios)
+            function mapearEstructura(padre) {
+                if (!padre || typeof padre !== 'object') return;
+
+                if (Array.isArray(padre)) {
+                    padre.forEach((item, idx) => {
+                        if (item && item.idObj !== undefined) {
+                            if (String(item.idObj) === sObjId) {
+                                objetoOrigen = item;
+                                arrayOrigen = padre;
+                                indexOrigen = idx;
+                            }
+                            if (String(item.idObj) === sDestId) {
+                                objetoDestino = item;
+                            }
+                        }
+                        mapearEstructura(item);
+                    });
+                } else {
+                    for (let key in padre) {
+                        if (key === 'SYSTEM_LOST_FOUND') continue; // Ignoramos objetos en el limbo
+
+                        if (padre[key] && padre[key].idObj !== undefined) {
+                            if (String(padre[key].idObj) === sObjId) {
+                                objetoOrigen = padre[key];
+                            }
+                            if (String(padre[key].idObj) === sDestId) {
+                                objetoDestino = padre[key];
+                            }
+                        }
+                        if (typeof padre[key] === 'object') {
+                            mapearEstructura(padre[key]);
+                        }
+                    }
+                }
+            }
+
+            // Ejecutamos el rastreo completo
+            mapearEstructura(gameData.dynamicData.chars);
+            mapearEstructura(gameData.dynamicData.worldStorage);
+
+            // REGLA 2: Verificación de existencia real en la partida
+            if (!objetoOrigen) {
+                alert("❌ Error: No se localizó el objeto de origen en el mundo actual.");
                 return;
             }
-            const targetContainer = destTarget.item;
-            let key = targetContainer.items ? 'items' : (targetContainer.content ? 'content' : (targetContainer.inv ? 'inv' : null));
-            if (!key) {
-                alert(`Error: [${targetContainer.n}] no tiene un inventario válido para guardar cosas.`);
+            if (!objetoDestino) {
+                alert("❌ Error: El objeto contenedor de destino no existe o ha sido destruido.");
                 return;
             }
-            const checkParadox = (parent, searchId) => {
-                const sub = parent.items || parent.content || parent.inv;
-                if (!sub || !Array.isArray(sub)) return false;
-                if (sub.some(o => String(o.idObj) === String(searchId))) return true;
-                return sub.some(o => checkParadox(o, searchId));
-            };
-            if (checkParadox(sourceTarget.item, destId)) {
-                alert("🚨 PARADOJA: No puedes meter un contenedor dentro de algo que ya vive dentro de él.");
+
+            // REGLA 3: Integridad de atributos (Comprobar si el destino es realmente un contenedor)
+            if (objetoDestino.items) llaveInventarioDestino = "items";
+            else if (objetoDestino.content) llaveInventarioDestino = "content";
+            else if (objetoDestino.inv) llaveInventarioDestino = "inv";
+
+            if (!llaveInventarioDestino) {
+                alert(`🚫 Error de Integridad: [${objetoDestino.n || "Objeto"}] no posee un atributo válido para guardar cosas ('items', 'content' o 'inv').`);
                 return;
             }
-            const finalItem = sourceTarget.array.splice(sourceTarget.index, 1)[0];
-            if (!targetContainer[key]) targetContainer[key] = [];
-            targetContainer[key].push(finalItem);
-            alert(`📦 Éxito: [${finalItem.n}] movido a [${targetContainer.n}]`);
+
+            // REGLA 4: Control de paradojas recursivas (Evitar bucles de referencias infinitas)
+            function comprobarParadoja(nodoPadre) {
+                if (!nodoPadre || typeof nodoPadre !== 'object') return false;
+
+                const subLista = nodoPadre.items || nodoPadre.content || nodoPadre.inv;
+                if (subLista && Array.isArray(subLista)) {
+                    if (subLista.some(o => o && String(o.idObj) === sDestId)) {
+                        return true;
+                    }
+                    return subLista.some(comprobarParadoja);
+                }
+                return false;
+            }
+
+            if (comprobarParadoja(objetoOrigen)) {
+                alert(`🚨 PARADOJA ESPACIAL: No puedes meter el contenedor [${objetoOrigen.n || "Origen"}] dentro de [${objetoDestino.n || "Destino"}], porque este último ya está guardado dentro de él.`);
+                return;
+            }
+
+            // EJECUCIÓN SEGURA DEL TRASLADO
+            if (arrayOrigen && indexOrigen !== -1) {
+                // Cortamos de la ubicación original de forma limpia
+                const itemExtraido = arrayOrigen.splice(indexOrigen, 1)[0];
+
+                // Inicializamos el array destino si por algún motivo no estuviera declarado
+                if (!objetoDestino[llaveInventarioDestino]) {
+                    objetoDestino[llaveInventarioDestino] = [];
+                }
+
+                // Insertamos el ítem dentro de las entrañas de su nuevo contenedor
+                objetoDestino[llaveInventarioDestino].push(itemExtraido);
+
+                alert(`📦 Éxito: ¡"${itemExtraido.n || "Objeto"}" movido dentro de "${objetoDestino.n || "Contenedor"}"!`);
+            } else {
+                alert("❌ Error crítico: El objeto de origen está huérfano en la estructura de datos.");
+                return;
+            }
+
+            // Limpieza de cachés de UI y redibujado de la vista
+            window.objetosInventarioTemp = [];
+            window.listasInventarioTemp = [];
             updateUI();
         }
         function getAllSources(root) {
@@ -670,114 +1031,163 @@ LÓGICA DE MUNDO:
             }
             return sources;
         }
-        function renderObject(obj) {
-            const isContainer = (obj.items || obj.content || obj.inv);
-            let html = `<div class="item-card" style="border-left: 4px solid ${isContainer ? '#ff4757' : '#555'}">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <strong>${obj.n}</strong>
-                <span style="font-size:0.8em; color:#888;">ID: ${obj.idObj}</span>
-            </div>
-            <p style="margin: 5px 0; font-size:0.9em;">${obj.d || 'Sin descripción'}</p>            
-            <div class="actions" style="margin-top:10px;">
-                <button onclick="editObject('${obj.idObj}')">Editar</button>
-                <button onclick="moveIntoContainer('${obj.idObj}')" style="background:#2f3542;">Mover a...</button>
-                <button onclick="deleteObject('${obj.idObj}')" style="background:#b33939;">Eliminar</button>
-            </div>`;
-            if (isContainer) {
-                const subItems = obj.items || obj.content || obj.inv || [];
-                html += `<div class="sub-inventory" style="margin-left:20px; padding-left:10px; border-left:1px dashed #444;">`;
-                if (subItems.length === 0) {
-                    html += `<p style="color:#666; font-size:0.8em;">(Vacío)</p>`;
-                } else {
-                    subItems.forEach(sub => {
-                        html += renderObject(sub);
-                    });
-                }
-                html += `</div>`;
-            }
-            html += `</div>`;
-            return html;
-        }
-        function recogerObjeto(objId) {
-            if (!gameData) return;
-            const data = gameData.dynamicData;
-            const char = data.chars[data.worldState.turnActionPlayer_id];
-            const target = findItemContext(objId);
-            if (target) {
-                const item = target.array.splice(target.index, 1)[0];
-                char.inv.push(item);
-                updateUI();
-            }
-        }
-        function soltarObjeto(objId) {
-            if (!gameData) return;
-            const data = gameData.dynamicData;
-            const char = data.chars[data.worldState.turnActionPlayer_id];
-            const target = findItemContext(objId);
-            if (target) {
-                const item = target.array.splice(target.index, 1)[0];
-                let area = data.worldStorage[char.currentArea_id];
-                if (!Array.isArray(area.miniAreas[char.currentMiniArea_id])) {
-                    area.miniAreas[char.currentMiniArea_id] = [];
-                }
-                area.miniAreas[char.currentMiniArea_id].push(item);
-                updateUI();
-            }
-        }
-        function moverPosicion(array, index, direccion) {
-            if (!array || index < 0) return;
-            const nuevaPosicion = index + direccion;
-            if (nuevaPosicion >= 0 && nuevaPosicion < array.length) {
-                const temp = array[index];
-                array[index] = array[nuevaPosicion];
-                array[nuevaPosicion] = temp;
-                updateUI();
-            }
-        }
-        function moverPosicionDirecta(arrayEncoded, index, direccion) {
-            const tempArray = JSON.parse(decodeURIComponent(arrayEncoded));
-            const targetObjId = tempArray[index].idObj;
-            const target = findItemContext(targetObjId);
-            if (target) {
-                const newPos = target.index + direccion;
-                if (newPos >= 0 && newPos < target.array.length) {
-                    [target.array[target.index], target.array[newPos]] = [target.array[newPos], target.array[target.index]];
-                    updateUI();
-                }
-            }
-        }
-        function eliminarObjeto(id) {
-            if (!confirm("¿Eliminar objeto #" + id + "? (No lo podrás recuperar sin copia de seguridad si exportas)")) return;
-            const target = findItemContext(id);
-            if (target) {
-                gameData.dynamicData.worldState.reusableObjIds.push(parseInt(id));
-                target.array.splice(target.index, 1);
-                alert("Objeto eliminado con éxito.");
-                updateUI();
-            } else {
-                alert("No se encontró el objeto a eliminar.");
-            }
-        }
-        function abrirSelectorContenedores(idObjetoAMover) {
-            const todosLosObjetos = [...gameData.dynamicData.worldStorage[gameData.dynamicData.chars[gameData.dynamicData.worldState.turnActionPlayer_id].currentArea_id].miniAreas[gameData.dynamicData.chars[gameData.dynamicData.worldState.turnActionPlayer_id].currentMiniArea_id], ...gameData.dynamicData.chars[gameData.dynamicData.worldState.turnActionPlayer_id].inv];
-            const candidatos = [];
-            const buscarCandidatos = (arr) => {
-                for (let o of arr) {
-                    if (!o) continue;
-                    if (o.idObj != idObjetoAMover && (o.items || o.content || o.inv)) candidatos.push(o);
-                    const sub = o.items || o.content || o.inv;
-                    if (Array.isArray(sub)) buscarCandidatos(sub);
-                }
-            };
-            buscarCandidatos(todosLosObjetos);
-            if (candidatos.length === 0) {
-                alert("No hay contenedores válidos cerca.");
+        function recogerObjetoReferencia(idObjAlmacen) {
+            // 1. Recuperamos el objeto real desde el almacén de memoria temporal
+            const objetoARecoger = window.objetosInventarioTemp[idObjAlmacen];
+            if (!objetoARecoger) {
+                alert("❌ Error: No se pudo localizar el objeto a recoger en la memoria actual.");
                 return;
             }
-            let menu = "Selecciona el ID del contenedor destino:\n\n";
-            candidatos.forEach(c => menu += `ID: ${c.idObj} - ${c.n || c.name || 'Sin nombre'}\n`);
-            const destId = prompt(menu);
-            if (destId) moveIntoContainer(idObjetoAMover, destId);
+
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+            if (!pj) return;
+
+            // 2. Localizamos la subárea del suelo actual de forma segura
+            const currentSubAreaObj = getSubAreaObject(pj.currentSubArea_id);
+            if (!currentSubAreaObj || !currentSubAreaObj.items || !Array.isArray(currentSubAreaObj.items)) {
+                alert("⚠️ Alerta: No se encontraron objetos en el suelo de esta subárea.");
+                return;
+            }
+
+            // 3. Sacamos el objeto de la lista del suelo
+            const idx = currentSubAreaObj.items.findIndex(it => it && it.idObj === objetoARecoger.idObj);
+            if (idx !== -1) {
+                currentSubAreaObj.items.splice(idx, 1);
+            } else {
+                alert("⚠️ Alerta: El objeto ya no se encuentra físicamente en el suelo de esta zona.");
+                return;
+            }
+
+            // 4. Aseguramos que el inventario del personaje esté inicializado e inyectamos el ítem
+            if (!pj.inv || !Array.isArray(pj.inv)) {
+                pj.inv = [];
+            }
+            pj.inv.push(objetoARecoger);
+
+            // 5. Feedback visual, limpieza de referencias y refresco instantáneo de la interfaz
+            alert(`Has recogido "${objetoARecoger.n || "Objeto"}" del suelo. Ahora está en tu inventario.`);
+
+            window.objetosInventarioTemp = [];
+            window.listasInventarioTemp = [];
+            updateUI();
+        }
+        function soltarObjetoReferencia(idObjAlmacen) {
+            // 1. Recuperamos el objeto real desde el almacén de memoria
+            const objetoASoltar = window.objetosInventarioTemp[idObjAlmacen];
+            if (!objetoASoltar) {
+                alert("❌ Error: No se pudo localizar el objeto a soltar en la memoria actual.");
+                return;
+            }
+
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+            if (!pj) return;
+
+            // 2. Localizamos el objeto del suelo de la subárea actual
+            const currentSubAreaObj = getSubAreaObject(pj.currentSubArea_id);
+            if (!currentSubAreaObj) {
+                alert(`❌ Error del motor: No se encontró la subárea "${pj.currentSubArea_id}" en el almacenamiento del mapa.`);
+                return;
+            }
+
+            // Aseguramos que la subárea tenga su array de ítems listo
+            if (!currentSubAreaObj.items || !Array.isArray(currentSubAreaObj.items)) {
+                currentSubAreaObj.items = [];
+            }
+
+            // 3. Sacamos el objeto del inventario raíz del personaje
+            if (pj.inv && Array.isArray(pj.inv)) {
+                const idx = pj.inv.findIndex(it => it && it.idObj === objetoASoltar.idObj);
+                if (idx !== -1) {
+                    pj.inv.splice(idx, 1);
+                } else {
+                    alert("⚠️ Alerta: El objeto no se encontró directamente en la raíz de tu inventario.");
+                    return;
+                }
+            }
+
+            // 4. Lo depositamos en el suelo (items de la subárea)
+            currentSubAreaObj.items.push(objetoASoltar);
+
+            // 5. Mensaje de feedback, limpieza de referencias y refresco completo
+            alert(`Has soltado "${objetoASoltar.n || "Objeto"}" al suelo en ${pj.currentSubArea_id}.`);
+
+            window.objetosInventarioTemp = [];
+            window.listasInventarioTemp = [];
+            updateUI();
+        }
+        function abrirSelectorContenedoresReferencia(idObjAlmacen) {
+            const objetoTarget = window.objetosInventarioTemp[idObjAlmacen];
+            if (!objetoTarget) return;
+
+            const sObjId = String(objetoTarget.idObj).trim();
+            let contenedoresValidos = [];
+
+            // 1. Buscador recursivo preliminar para recolectar candidatos válidos
+            function buscarContenedoresCandidatos(padre, nombreRuta = "") {
+                if (!padre || typeof padre !== 'object') return;
+
+                if (Array.isArray(padre)) {
+                    padre.forEach(item => buscarContenedoresCandidatos(item, nombreRuta));
+                } else {
+                    // Si el nodo actual es un objeto con ID propio y no es el objeto que queremos mover
+                    if (padre.idObj !== undefined && String(padre.idObj) !== sObjId) {
+                        // REGLA DE INTEGRIDAD: Debe poseer capacidad de inventario (items, content o inv)
+                        if (padre.items || padre.content || padre.inv) {
+
+                            // REGLA DE PARADOJA: El objeto origen NO puede contener al candidato actual
+                            function comprobarParadojaLocal(nodoPadre) {
+                                if (!nodoPadre || typeof nodoPadre !== 'object') return false;
+                                const subLista = nodoPadre.items || nodoPadre.content || nodoPadre.inv;
+                                if (subLista && Array.isArray(subLista)) {
+                                    if (subLista.some(o => o && String(o.idObj) === String(padre.idObj))) {
+                                        return true;
+                                    }
+                                    return subLista.some(comprobarParadojaLocal);
+                                }
+                                return false;
+                            }
+
+                            if (!comprobarParadojaLocal(objetoTarget)) {
+                                // Si pasa el filtro, guardamos una bonita descripción para el prompt
+                                contenedoresValidos.push(`#ID ${padre.idObj} -> "${padre.n || 'Sin nombre'}"`);
+                            }
+                        }
+                    }
+
+                    // Continuar explorando el objeto
+                    for (let key in padre) {
+                        if (key !== 'SYSTEM_LOST_FOUND' && typeof padre[key] === 'object') {
+                            buscarContenedoresCandidatos(padre[key], nombreRuta);
+                        }
+                    }
+                }
+            }
+
+            // Rastreamos en toda la base de datos de juego viva
+            buscarContenedoresCandidatos(gameData.dynamicData.chars);
+            buscarContenedoresCandidatos(gameData.dynamicData.worldStorage);
+
+            // 2. Construir el mensaje dinámico para el Prompt
+            let mensajePrompt = `¿A qué contenedor deseas mover "${objetoTarget.n || 'este objeto'}"?\n`;
+            mensajePrompt += `Introduce el #ID numérico de destino.\n\n`;
+
+            if (contenedoresValidos.length > 0) {
+                mensajePrompt += `📥 CONTENEDORES VÁLIDOS DETECTADOS:\n`;
+                mensajePrompt += `----------------------------------------\n`;
+                mensajePrompt += contenedoresValidos.join("\n") + `\n`;
+                mensajePrompt += `----------------------------------------`;
+            } else {
+                mensajePrompt += `⚠️ No se detectaron contenedores válidos disponibles en este momento.`;
+            }
+
+            // 3. Lanzar el prompt personalizado
+            const destId = prompt(mensajePrompt);
+            if (!destId) return; // Cancelado por el usuario
+
+            // Delegamos a la función principal que procesará el movimiento definitivo
+            moveIntoContainer(objetoTarget.idObj, destId);
         }
         function findItemContext(objId) {
             if (!gameData) return null;
@@ -805,7 +1215,7 @@ LÓGICA DE MUNDO:
             }
             return null;
         }
-        function habilitarEdicionStatsConDecay(elemento, pjId, statKey, indice) {
+        function habilitarEdicionStats(elemento, pjId, statKey, indice) {
             const pj = gameData.dynamicData.chars[pjId];
             const input = document.createElement('input');
             input.type = 'number';
@@ -823,386 +1233,47 @@ LÓGICA DE MUNDO:
             input.focus();
         }
         function habilitarEdicionInventario(elemento, clave, objId) {
-    // 1. Comprobación estricta de ID para permitir el número 0
-    if (objId === undefined || objId === null) {
-        alert(`❌ Error técnico: No se pudo determinar el #ID del objeto dueño de la propiedad "${clave}".`);
-        return;
-    }
+            // Versión antigua, me pregunto si sería posible con la nueva estructura del JSON que tiene subAreas o no
+            const contexto = findItemContext(objId);
+            if (!contexto) return;
+            habilitarEdicion(elemento, clave, contexto.item);
+        }
 
-    const contexto = findItemContext(objId);
-    if (!contexto) {
-        alert(`⚠️ Error: El motor no encontró ningún objeto con el ID #${objId} en el mapa de datos.`);
-        return;
-    }
-    const objetoReal = contexto.item;
+        function habilitarEdicionClima(elemento, subAreaId) {
+    // 1. Usamos tu función nativa para buscar el objeto en la jerarquía
+    const subAreaObj = getSubAreaObject(subAreaId);
+    if (!subAreaObj) return;
 
-    // 2. Excepción estricta para la clave primaria del motor
-    if (clave === 'idObj') {
-        alert("⚠️ Por seguridad del motor, no está permitido alterar ni remover la clave 'idObj'.");
-        return;
-    }
+    const climasComunes = ["Despejado", "Niebla densa", "Lluvia", "Tormenta", "Nieve", "Viento fuerte", "Sheltered"];
+    const select = document.createElement('select');
+    climasComunes.forEach(c => select.add(new Option(c, c)));
+    select.add(new Option("+ Personalizado...", "NEW_VAL"));
 
-    // 3. Mapeo dinámico y contextual de opciones
-    // Guardaremos las acciones reales en un array para que los números siempre sean correlativos (1, 2, 3...)
-    let accionesDisponibles = [];
-    let textoMenu = `🛠️ GESTIÓN DE PROPIEDADES (Objeto #${objId})\n` +
-                    `Etiqueta seleccionada: "${clave}"\n\n` +
-                    `Escribe el número de la acción que deseas realizar:\n`;
+    // 2. SOLUCIÓN AL BUG: Sincronizamos el valor por defecto con lo que realmente ve el usuario.
+    // Si la subárea no tiene clima propio, obtenemos el heredado para que el select coincida con la interfaz.
+    const currentPath = findSubAreaPath(subAreaId);
+    const climaActual = subAreaObj.weather || getInheritedWeather(currentPath) || "Despejado";
+    
+    // Asignamos el valor previo real al select
+    select.value = climasComunes.includes(climaActual) ? climaActual : "NEW_VAL";
 
-    if (clave === 'items' && Array.isArray(objetoReal[clave])) {
-        // Estructura de opciones correlativas para contenedores (items)
-        accionesDisponibles = ["EDITAR_ESTRUCTURA", "ELIMINAR_KEY", "AÑADIR_SUB_OBJETO"];
-        
-        textoMenu += `1️⃣  Ver/Editar estructura cruda de "${clave}"\n` +
-                     `2️⃣  ELIMINAR por completo el contenedor "${clave}"\n\n` +
-                     `📦 PROPIEDADES DE CONTENEDOR:\n` +
-                     `3️⃣  Añadir un NUEVO objeto DENTRO de este contenedor (items)`;
-    } else {
-        // Estructura de opciones correlativas para propiedades comunes
-        accionesDisponibles = ["EDITAR_VALOR", "AÑADIR_KEY", "ELIMINAR_KEY"];
-        
-        textoMenu += `1️⃣  Editar valor de "${clave}"\n` +
-                     `2️⃣  Añadir una NUEVA propiedad/key a este objeto\n` +
-                     `3️⃣  ELIMINAR por completo la propiedad "${clave}"`;
-    }
+    // 3. Mantenemos tu lógica de guardado intacta
+    const guardar = () => {
+        if (select.value === "NEW_VAL") {
+            const nuevo = prompt("Describe el clima:");
+            if (nuevo) subAreaObj.weather = nuevo;
+        } else {
+            subAreaObj.weather = select.value;
+        }
+        updateUI();
+    };
 
-    const inputUsuario = prompt(textoMenu, "1");
-    if (!inputUsuario) return; // Cancelado por el usuario
-
-    // Convertimos la entrada a índice del array (ej: si escribe "1" -> índice 0)
-    const indiceAccion = parseInt(inputUsuario) - 1;
-    const accionSeleccionada = accionesDisponibles[indiceAccion];
-
-    // Control estricto: Si la acción no existe en el mapa contextual actual, se aborta de inmediato
-    if (!accionSeleccionada) {
-        alert("❌ Opción no válida.");
-        return;
-    }
-
-    // 4. Ejecución de la lógica según la acción seleccionada dinámicamente
-    switch (accionSeleccionada) {
-        
-        case "EDITAR_VALOR":
-        case "EDITAR_ESTRUCTURA":
-            if (typeof objetoReal[clave] === 'object' && objetoReal[clave] !== null) {
-                return habilitarEdicionJSON(elemento, clave, objetoReal);
-            }
-            return habilitarEdicion(elemento, clave, objetoReal);
-
-        case "AÑADIR_KEY":
-            const nuevaKey = prompt("Escribe el nombre de la NUEVA key/etiqueta (ej: d, q, etc.):");
-            if (!nuevaKey) return;
-            
-            const keyFormateada = nuevaKey.trim();
-            if (keyFormateada === "idObj") {
-                alert("❌ No puedes crear una propiedad llamada 'idObj'.");
-                return;
-            }
-
-            if (objetoReal.hasOwnProperty(keyFormateada)) {
-                alert(`⚠️ La propiedad "${keyFormateada}" ya existe en este objeto.`);
-                return;
-            }
-
-            // Si intenta forzar un contenedor desde aquí, lo creamos adecuadamente
-            if (keyFormateada === 'items' || keyFormateada === 'content' || keyFormateada === 'inv') {
-                if (confirm(`📦 Detectado nombre de contenedor ("${keyFormateada}").\n\n¿Quieres inicializarlo como un espacio vacío listo para guardar sub-objetos?`)) {
-                    objetoReal[keyFormateada] = [];
-                    alert(`¡Contenedor "${keyFormateada}" creado con éxito!\nAhora haz clic sobre su etiqueta para meter objetos.`);
-                    updateUI();
-                    return;
-                }
-            }
-
-            const nuevoValorInput = prompt(`Escribe el valor para "${keyFormateada}"\n(Soporta JSON crudo como: "texto", 42, true, [] o {}):`, '""');
-            if (nuevoValorInput === null) return;
-
-            try {
-                objetoReal[keyFormateada] = JSON.parse(nuevoValorInput);
-            } catch (e) {
-                objetoReal[keyFormateada] = nuevoValorInput;
-            }
-
-            alert(`¡Propiedad "${keyFormateada}" añadida con éxito!`);
-            updateUI();
-            break;
-
-        case "ELIMINAR_KEY":
-            const todasLasKeys = Object.keys(objetoReal);
-            // Evitamos que el objeto quede inservible si solo tiene su ID y la propiedad actual
-            if (todasLasKeys.length <= 2) {
-                alert(`⚠️ Error: No puedes eliminar "${clave}". Debe quedar al menos una propiedad descriptiva además de 'idObj'.`);
-                return;
-            }
-
-            if (confirm(`🗑️ ¿Estás seguro de que deseas borrar la propiedad "${clave}" de este objeto?`)) {
-                delete objetoReal[clave];
-                alert(`Propiedad "${clave}" eliminada.`);
-                updateUI();
-            }
-            break;
-
-        case "AÑADIR_SUB_OBJETO":
-            crearSubObjetoEnContenedor(objetoReal[clave]);
-            break;
-    }
+    select.onchange = guardar;
+    select.onblur = () => updateUI();
+    elemento.innerHTML = '';
+    elemento.appendChild(select);
+    select.focus();
 }
-        function crearSubObjetoEnContenedor(arrayContenedor) {
-            if (!gameData) return;
-
-            // 1. Calcular de forma limpia la ID única respetando la regla nº 5 del motor
-            let nuevoId;
-            let worldState = gameData.dynamicData.worldState;
-
-            if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
-                nuevoId = worldState.reusableObjIds[0];
-            } else {
-                nuevoId = worldState.lastGeneratedObjId + 1;
-            }
-
-            // 2. Plantilla para guiar la creación del sub-objeto
-            const plantillaSubObjeto = {
-                "n": "Objeto Guardado",
-                "d": "Está dentro de un contenedor.",
-                "q": 1
-            };
-
-            const mensajePrompt = `📦 Creando sub-objeto DENTRO del contenedor.\n` +
-                `Se le asignará automáticamente el #ID: ${nuevoId}\n\n` +
-                `Introduce el JSON del nuevo objeto:`;
-
-            const inputUsuario = prompt(mensajePrompt, JSON.stringify(plantillaSubObjeto, null, 4));
-            if (!inputUsuario) return;
-
-            try {
-                const objetoParseado = JSON.parse(inputUsuario);
-
-                if (Array.isArray(objetoParseado)) {
-                    alert("⚠️ Error: Debes introducir un objeto '{}', no una lista.");
-                    return;
-                }
-
-                // 3. Confirmar y extraer la ID del pool global
-                if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
-                    nuevoId = worldState.reusableObjIds.shift();
-                } else {
-                    worldState.lastGeneratedObjId++;
-                    nuevoId = worldState.lastGeneratedObjId;
-                }
-
-                // Inyectar el ID obligatorio
-                objetoParseado.idObj = nuevoId;
-
-                // 4. Hacer push en el array interno del contenedor que pasamos por referencia
-                arrayContenedor.push(objetoParseado);
-
-                alert(`¡Sub-objeto creado con éxito (ID #${nuevoId}) dentro del contenedor!`);
-                updateUI();
-
-            } catch (error) {
-                alert("❌ ERROR JSON INVÁLIDO:\n\n" + error.message);
-            }
-        }
-        function habilitarEdicionJSON(elemento, clave, path) {
-            const input = document.createElement('input');
-            input.type = 'text';
-            // Mostramos el objeto o array serializado en una sola línea para edición rápida
-            input.value = JSON.stringify(path[clave]);
-
-            Object.assign(input.style, {
-                width: "150px", // Un poco más ancho ya que contendrá estructuras JSON
-                background: "#000",
-                color: "#00ff00",
-                border: "1px solid var(--accent)",
-                fontFamily: "monospace"
-            });
-
-            const guardarJSON = () => {
-                try {
-                    const parsed = JSON.parse(input.value);
-                    path[clave] = parsed;
-                    updateUI();
-                } catch (error) {
-                    alert("❌ ERROR: El formato JSON que intentas guardar no es válido.\nRevisa las llaves, corchetes o comillas.");
-                    updateUI();
-                }
-            };
-
-            input.onblur = guardarJSON;
-            input.onkeydown = (e) => { if (e.key === 'Enter') guardarJSON(); };
-            elemento.innerHTML = '';
-            elemento.appendChild(input);
-            input.focus();
-        }
-
-        function habilitarEdicionArea(elemento, pjId) {
-            const pj = gameData.dynamicData.chars[pjId];
-            const areasExistentes = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND");
-
-            const select = document.createElement('select');
-            areasExistentes.forEach(area => select.add(new Option(area, area)));
-            select.add(new Option("--- Acciones ---", ""));
-            select.add(new Option("+ Crear Nueva Área...", "NEW_VAL"));
-            select.add(new Option("🗑️ Eliminar Área Actual", "DEL_VAL"));
-            select.value = pj.currentArea_id;
-
-            const guardar = () => {
-                if (select.value === "NEW_VAL") {
-                    let nueva = prompt("Nombre de la nueva Área:");
-                    if (nueva) {
-                        nueva = nueva.trim();
-                        const existe = areasExistentes.some(a => a.toLowerCase() === nueva.toLowerCase());
-
-                        if (nueva === "") return;
-                        if (existe) {
-                            alert("Error: Ya existe un área con ese nombre.");
-                            return;
-                        }
-
-                        gameData.dynamicData.worldStorage[nueva] = {
-                            weather: null,
-                            miniAreas: { "Inicio": [] }, freq: [], occ: [], rare: []
-                        };
-                        pj.currentArea_id = nueva;
-                        pj.currentMiniArea_id = "Inicio";
-                    }
-                } else if (select.value === "DEL_VAL") {
-                    if (areasExistentes.length <= 1) {
-                        alert("No puedes eliminar la última área existente.");
-                    } else if (confirm(`¿Estás seguro de eliminar el área "${pj.currentArea_id}" y todos sus datos?`)) {
-                        const areaAEliminar = pj.currentArea_id;
-                        delete gameData.dynamicData.worldStorage[areaAEliminar];
-                        // Mover al personaje a la primera área que quede
-                        const nuevaArea = Object.keys(gameData.dynamicData.worldStorage).filter(a => a !== "SYSTEM_LOST_FOUND")[0];
-                        pj.currentArea_id = nuevaArea;
-                        pj.currentMiniArea_id = Object.keys(gameData.dynamicData.worldStorage[nuevaArea].miniAreas)[0];
-                    }
-                } else if (select.value !== "") {
-                    pj.currentArea_id = select.value;
-                    const primeraMini = Object.keys(gameData.dynamicData.worldStorage[select.value].miniAreas)[0];
-                    pj.currentMiniArea_id = primeraMini || "Inicio";
-                }
-                updateUI();
-            };
-
-            select.onchange = guardar;
-            select.onblur = () => updateUI();
-            elemento.innerHTML = '';
-            elemento.appendChild(select);
-            select.focus();
-        }
-
-        function habilitarEdicionMiniArea(elemento, pjId) {
-            const pj = gameData.dynamicData.chars[pjId];
-            const areaActual = gameData.dynamicData.worldStorage[pj.currentArea_id];
-            if (!areaActual) return;
-
-            const minisExistentes = Object.keys(areaActual.miniAreas);
-            const select = document.createElement('select');
-            minisExistentes.forEach(m => select.add(new Option(m, m)));
-            select.add(new Option("--- Acciones ---", ""));
-            select.add(new Option("+ Crear Nueva MiniÁrea...", "NEW_VAL"));
-            select.add(new Option("🗑️ Eliminar MiniÁrea Actual", "DEL_VAL"));
-            select.value = pj.currentMiniArea_id;
-
-            const guardar = () => {
-                if (select.value === "NEW_VAL") {
-                    let nueva = prompt("Nombre de la nueva MiniÁrea:");
-                    if (nueva) {
-                        nueva = nueva.trim();
-                        const existe = minisExistentes.some(m => m.toLowerCase() === nueva.toLowerCase());
-
-                        if (nueva === "") return;
-                        if (existe) {
-                            alert("Error: Ya existe esa miniárea en esta ubicación.");
-                            return;
-                        }
-
-                        areaActual.miniAreas[nueva] = [];
-                        pj.currentMiniArea_id = nueva;
-                    }
-                } else if (select.value === "DEL_VAL") {
-                    if (minisExistentes.length <= 1) {
-                        alert("No puedes eliminar la única miniárea. El área debe tener al menos una.");
-                    } else if (confirm(`¿Eliminar miniárea "${pj.currentMiniArea_id}"?`)) {
-                        delete areaActual.miniAreas[pj.currentMiniArea_id];
-                        pj.currentMiniArea_id = Object.keys(areaActual.miniAreas)[0];
-                    }
-                } else if (select.value !== "") {
-                    pj.currentMiniArea_id = select.value;
-                }
-                updateUI();
-            };
-
-            select.onchange = guardar;
-            select.onblur = () => updateUI();
-            elemento.innerHTML = '';
-            elemento.appendChild(select);
-            select.focus();
-        }
-
-        function habilitarEdicionClima(elemento, areaId) {
-            const area = gameData.dynamicData.worldStorage[areaId];
-            if (!area) return;
-
-            const climasComunes = ["Despejado", "Niebla densa", "Lluvia", "Tormenta", "Nieve", "Viento fuerte"];
-            const select = document.createElement('select');
-            climasComunes.forEach(c => select.add(new Option(c, c)));
-            select.add(new Option("+ Personalizado...", "NEW_VAL"));
-            select.value = climasComunes.includes(area.weather) ? area.weather : "NEW_VAL";
-
-            const guardar = () => {
-                if (select.value === "NEW_VAL") {
-                    const nuevo = prompt("Describe el clima:");
-                    if (nuevo) area.weather = nuevo;
-                } else {
-                    area.weather = select.value;
-                }
-                updateUI();
-            };
-
-            select.onchange = guardar;
-            select.onblur = () => updateUI();
-            elemento.innerHTML = '';
-            elemento.appendChild(select);
-            select.focus();
-        }
-        function habilitarEdicionElegirIDPj(elemento, pjId, index) {
-            const currentVal = gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id;
-            const pjsYaAgregados = gameData.dynamicData.chars[pjId].detectedCharsNearbyList
-                .map(item => item.nearby_pj_id)
-                .filter(id => id !== currentVal);
-            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
-
-                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
-            });
-
-            const select = document.createElement('select');
-            select.style.padding = "2px";
-            select.style.background = "#222";
-            select.style.color = "#fff";
-
-            todosLosPjs.forEach(id => {
-                const option = new Option(id, id);
-                select.add(option);
-            });
-
-            select.value = currentVal;
-
-            const guardar = () => {
-                const nuevoValor = select.value;
-                gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id = nuevoValor;
-                updateUI();
-            };
-
-            select.onchange = guardar;
-            select.onblur = updateUI; // Si hace clic fuera sin cambiar nada, revierte el select al texto normal
-
-            elemento.innerHTML = '';
-            elemento.appendChild(select);
-            select.focus();
-        }
-
         function habilitarEdicionText(elemento, clave, path) {
             const input = document.createElement('input');
             input.type = 'text';
@@ -1227,15 +1298,21 @@ LÓGICA DE MUNDO:
         }
         function habilitarEdicionBoolean(elemento, clave, path, valTrue = "Si", valFalse = "No") {
             const select = document.createElement('select');
+            //const optTrue = new Option(clave === 'fem' ? 'Femenino' : 'SÍ', true);
+            //const optFalse = new Option(clave === 'fem' ? 'Masculino' : 'NO', false);
             const optTrue = new Option(valTrue, true);
             const optFalse = new Option(valFalse, false);
+
             select.add(optTrue);
             select.add(optFalse);
-            select.value = path[clave];
+            select.value = path[clave]; // Mantiene el valor previo por defecto
+
             const guardarBool = () => {
+                // Al ser un select, siempre tendrá un valor, manteniendo el previo si no se cambia
                 path[clave] = (select.value === 'true');
                 updateUI();
             };
+
             select.onblur = guardarBool;
             select.onchange = guardarBool;
             elemento.innerHTML = '';
@@ -1271,7 +1348,7 @@ LÓGICA DE MUNDO:
                         return;
                     }
                 }
-                path[clave] = nuevoValor;
+                path[clave] = parseFloat(nuevoValor);
                 updateUI();
             };
             input.onblur = guardar;
@@ -1294,48 +1371,401 @@ LÓGICA DE MUNDO:
                     return habilitarEdicionText(elemento, clave, path);
             }
         }
+        // Devuelve un array de strings con la ruta de IDs desde la raíz hasta el subárea objetivo
+        function findSubAreaPath(targetId) {
+            const worldStorage = gameData.dynamicData.worldStorage;
+            if (!worldStorage) return [];
 
-        function agregarPjCercano(pjId) {
-            if (!gameData) return;
+            function dfs(currentObj, currentId, currentPath) {
+                const newPath = [...currentPath, currentId];
+                if (currentId === targetId) return newPath;
 
-            const pjsYaAgregados = (gameData.dynamicData.chars[pjId].detectedCharsNearbyList || []).map(item => item.nearby_pj_id);
-
-            // 1. Obtener las IDs válidas
-            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
-                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
-            });
-
-            // 2. Mostrar la lista de IDs al usuario en un mensaje interactivo
-            const mensaje = `IDs de personajes disponibles:\n- ${todosLosPjs.join('\n- ')}\n\nEscribe exactamente el ID del personaje que deseas añadir:`;
-            const seleccion = prompt(mensaje);
-
-            if (!seleccion) return; // Si cancela, no hace nada
-
-            const idLimpia = seleccion.trim();
-
-            // 3. VALIDACIÓN ESTRICTA: Comprobar si el ID introducido existe en la lista
-            if (!todosLosPjs.includes(idLimpia)) {
-                alert(`🚨 ERROR: El ID "${idLimpia}" no pertenece a ningún personaje registrado en la partida.`);
-                return; // Detiene la creación
+                if (currentObj.subAreas && typeof currentObj.subAreas === 'object') {
+                    for (const subId in currentObj.subAreas) {
+                        const result = dfs(currentObj.subAreas[subId], subId, newPath);
+                        if (result) return result;
+                    }
+                }
+                return null;
             }
 
-            // 4. Estructura base para el nuevo objeto dentro del array
-            const nuevoPjCercano = {
-                nearby_pj_id: idLimpia,
-                recognized: false,
-                distance: "Cerca"
+            for (const rootId in worldStorage) {
+                const result = dfs(worldStorage[rootId], rootId, []);
+                if (result) return result;
+            }
+            return [];
+        }
+        // Busca en el árbol jerárquico y devuelve el OBJETO completo de la subárea 
+        // (Útil para leer sus propiedades internas como .items, .desc, etc.)
+        function getSubAreaObject(targetId) {
+            const worldStorage = gameData.dynamicData.worldStorage;
+            if (!worldStorage) return null;
+
+            function dfs(currentObj, currentId) {
+                if (currentId === targetId) return currentObj;
+
+                if (currentObj.subAreas && typeof currentObj.subAreas === 'object') {
+                    for (const subId in currentObj.subAreas) {
+                        const result = dfs(currentObj.subAreas[subId], subId);
+                        if (result) return result;
+                    }
+                }
+                return null;
+            }
+
+            for (const rootId in worldStorage) {
+                const result = dfs(worldStorage[rootId], rootId);
+                if (result) return result;
+            }
+            return null;
+        }
+        // Devuelve una lista plana con todas las IDs de subáreas disponibles para el desplegable (Excluyendo el sistema)
+        function getAllSubAreaIds() {
+            const worldStorage = gameData.dynamicData.worldStorage;
+            const ids = [];
+            if (!worldStorage) return ids;
+
+            function extract(currentObj, currentId) {
+                if (currentId === "SYSTEM_LOST_FOUND") return;
+
+                ids.push(currentId);
+                if (currentObj.subAreas && typeof currentObj.subAreas === 'object') {
+                    for (const subId in currentObj.subAreas) {
+                        extract(currentObj.subAreas[subId], subId);
+                    }
+                }
+            }
+
+            for (const rootId in worldStorage) {
+                if (rootId === "SYSTEM_LOST_FOUND") continue;
+                extract(worldStorage[rootId], rootId);
+            }
+            return ids;
+        }
+
+        // Calcula el clima resolviendo las prioridades de la jerarquía de dentro hacia afuera
+        function getInheritedWeather(path) {
+            let currentWeather = "Desconocido / Despejado";
+
+            for (const zoneId of path) {
+                const zoneObj = getSubAreaObject(zoneId); // Aquí usamos la nueva función
+                if (zoneObj && zoneObj.weather) {
+                    currentWeather = zoneObj.weather;
+                }
+            }
+            return currentWeather;
+        }
+
+        function updateValue(path, value) {
+            // Tu función actual en index.html
+            eval(`gameData.dynamicData.${path} = \`${value}\``);
+            updateUI();
+        }
+        // Devuelve el string exacto para acceder a una subárea en el JSON (ej: "worldStorage.MagicForest.subAreas.MarisaHouse")
+        function getSubAreaJsonPath(targetId) {
+            const worldStorage = gameData.dynamicData.worldStorage;
+            if (!worldStorage) return "";
+
+            function dfs(currentObj, currentId, currentPath) {
+                if (currentId === targetId) return currentPath;
+                if (currentObj.subAreas && typeof currentObj.subAreas === 'object') {
+                    for (const subId in currentObj.subAreas) {
+                        const res = dfs(currentObj.subAreas[subId], subId, `${currentPath}.subAreas.${subId}`);
+                        if (res) return res;
+                    }
+                }
+                return null;
+            }
+
+            for (const rootId in worldStorage) {
+                const res = dfs(worldStorage[rootId], rootId, `worldStorage.${rootId}`);
+                if (res) return res;
+            }
+            return "";
+        }
+        // Crear un ítem completamente nuevo en la raíz o subcontenedores
+        function crearObjetoEnPath(pathArray) {
+            const nombre = prompt("Nombre del nuevo objeto:");
+            if (!nombre) return;
+            const q = Number(prompt("Cantidad:", "1") || 1);
+
+            // Buscamos el idObj más alto del sistema para generar uno único correlativo
+            let maxId = 0;
+            const buscarMaxId = (obj) => {
+                if (!obj || typeof obj !== 'object') return;
+                if (obj.idObj && obj.idObj > maxId) maxId = obj.idObj;
+                for (let k in obj) buscarMaxId(obj[k]);
             };
+            buscarMaxId(gameData.dynamicData);
 
-            // 5. Insertar en el JSON y actualizar la UI
-            if (!gameData.dynamicData.chars[pjId].detectedCharsNearbyList) {
-                gameData.dynamicData.chars[pjId].detectedCharsNearbyList = [];
+            const nuevoItem = { idObj: maxId + 1, n: nombre, q: q, items: [] };
+            const arr = eval(`gameData.dynamicData.${pathArray}`) || [];
+            arr.push(nuevoItem);
+            eval(`gameData.dynamicData.${pathArray} = arr`);
+            updateUI();
+        }
+        function ejecutarMovimiento(idAlmacen, index, direccion) {
+            try {
+                const arr = window.listasInventarioTemp[idAlmacen];
+
+                if (arr && Array.isArray(arr)) {
+                    const targetIndex = index + direccion;
+                    if (targetIndex >= 0 && targetIndex < arr.length) {
+                        const temp = arr[index];
+                        arr[index] = arr[targetIndex];
+                        arr[targetIndex] = temp;
+                        window.listasInventarioTemp = [];
+                        updateUI();
+                    }
+                }
+            } catch (error) {
+                console.error("Error al ordenar el inventario mediante referencia:", error);
+            }
+        }
+
+        // ➕ CREAR UN ÍTEM EN UN CONTENEDOR (Ej: Añadir a items dentro de una mochila)
+        function crearObjetoEnReferencia(idObjAlmacen, llaveContenedor) {
+            const objPadre = window.objetosInventarioTemp[idObjAlmacen];
+            if (!objPadre) return;
+
+            const nombre = prompt("Nombre del nuevo objeto:");
+            if (!nombre) return;
+            const q = Number(prompt("Cantidad:", "1") || 1);
+
+            // Calculamos de forma rápida el idObj incremental global más alto
+            let maxId = 0;
+            const buscarMaxId = (o) => {
+                if (!o || typeof o !== 'object') return;
+                if (o.idObj && o.idObj > maxId) maxId = o.idObj;
+                for (let k in o) buscarMaxId(o[k]);
+            };
+            buscarMaxId(gameData.dynamicData);
+
+            const nuevoItem = { idObj: maxId + 1, n: nombre, q: q, items: [] };
+
+            if (!objPadre[llaveContenedor] || !Array.isArray(objPadre[llaveContenedor])) {
+                objPadre[llaveContenedor] = [];
             }
 
-            gameData.dynamicData.chars[pjId].detectedCharsNearbyList.push(nuevoPjCercano);
-            alert(`✅ Añadido "${idLimpia}" a la lista de personajes cercanos.`);
+            objPadre[llaveContenedor].push(nuevoItem);
+
+            window.objetosInventarioTemp = [];
+            window.listasInventarioTemp = [];
+            updateUI();
+        }
+        function eliminarObjetoPorReferencia(idListaAlmacen, index) {
+            const arr = window.listasInventarioTemp[idListaAlmacen];
+            if (!arr || !Array.isArray(arr)) return;
+
+            if (confirm("¿Deseas eliminar este objeto y todo su contenido permanentemente?")) {
+                arr.splice(index, 1);
+                window.objetosInventarioTemp = [];
+                window.listasInventarioTemp = [];
+                updateUI();
+            }
+        }
+        function eliminarAtributoReferencia(idObjAlmacen, llave) {
+            const obj = window.objetosInventarioTemp[idObjAlmacen];
+            if (!obj) return;
+
+            if (confirm(`¿Eliminar la propiedad "${llave}" de este objeto?`)) {
+                delete obj[llave];
+                window.objetosInventarioTemp = [];
+                window.listasInventarioTemp = [];
+                updateUI();
+            }
+        }
+
+        function habilitarEdicionInventarioMenu(elemento, clave, idObjAlmacen) {
+    // 1. Obtención segura del objeto real a través de la referencia en memoria
+    const objetoReal = window.objetosInventarioTemp[idObjAlmacen];
+    if (!objetoReal) {
+        alert(`❌ Error técnico: No se pudo determinar el objeto dueño de la propiedad "${clave}".`);
+        return;
+    }
+
+    const visualId = objetoReal.idObj !== undefined ? `#${objetoReal.idObj}` : "(Sin #ID)";
+
+    // 2. Excepción estricta para la clave primaria del motor
+    if (clave === 'idObj') {
+        alert("⚠️ Por seguridad del motor, no está permitido alterar ni remover la clave 'idObj'.");
+        return;
+    }
+
+    // 3. Mapeo dinámico y contextual de opciones
+    let accionesDisponibles = [];
+    let textoMenu = `🛠️ GESTIÓN DE PROPIEDADES (Objeto ${visualId})\n` +
+        `Etiqueta seleccionada: "${clave}"\n\n` +
+        `Escribe el número de la acción que deseas realizar:\n`;
+
+    // Comprobamos si es un contenedor de ítems (tanto si es un array o si actúa como tal)
+    if ((clave === 'items' || clave === 'content' || clave === 'inv') && Array.isArray(objetoReal[clave])) {
+        accionesDisponibles = ["EDITAR_VALOR", "ELIMINAR_KEY", "AÑADIR_SUB_OBJETO"];
+
+        textoMenu += `1️⃣  Ver/Editar estructura cruda (JSON) de "${clave}"\n` +
+            `2️⃣  ELIMINAR por completo el contenedor "${clave}"\n\n` +
+            `📦 PROPIEDADES DE CONTENEDOR:\n` +
+            `3️⃣  Añadir un NUEVO objeto DENTRO de este contenedor (${clave})`;
+    } else {
+        accionesDisponibles = ["EDITAR_VALOR", "AÑADIR_KEY", "ELIMINAR_KEY"];
+
+        textoMenu += `1️⃣  Editar valor de "${clave}"\n` +
+            `2️⃣  Añadir una NUEVA propiedad/key a este objeto\n` +
+            `3️⃣  ELIMINAR por completo la propiedad "${clave}"`;
+    }
+
+    const inputUsuario = prompt(textoMenu, "1");
+    if (!inputUsuario) return; // Cancelado por el usuario
+
+    const indiceAccion = parseInt(inputUsuario) - 1;
+    const accionSeleccionada = accionesDisponibles[indiceAccion];
+
+    if (!accionSeleccionada) {
+        alert("❌ Opción no válida.");
+        return;
+    }
+
+    // 4. Ejecución de la lógica según la acción seleccionada dinámicamente
+    switch (accionSeleccionada) {
+
+        case "EDITAR_VALOR":
+            // Si el valor interior es un objeto complejo o array, permitimos editarlo como JSON textual
+            if (typeof objetoReal[clave] === 'object' && objetoReal[clave] !== null) {
+                const valorActualStr = JSON.stringify(objetoReal[clave]);
+                const nuevoJsonInput = prompt(`Editar estructura JSON para "${clave}":`, valorActualStr);
+                if (nuevoJsonInput === null) return;
+                try {
+                    objetoReal[clave] = JSON.parse(nuevoJsonInput);
+                    alert("¡Estructura JSON actualizada!");
+                } catch (e) {
+                    alert("❌ Error de sintaxis JSON. Los cambios no se aplicaron.");
+                    return;
+                }
+                limpiarAlmacenesYRefrescar();
+            } else {
+                // 🔄 REUTILIZACIÓN DE VALIDACIÓN GLOBAL:
+                // En lugar de duplicar la lógica del <input> inline, delegamos el proceso en la función 
+                // central 'habilitarEdicion' pasándole el elemento HTML, la clave y el objeto dueño.
+                // Esto heredará de forma automática tus advertencias de cambio de tipos, confirmaciones y updateUI().
+                habilitarEdicion(elemento, clave, objetoReal);
+                return; // Cortamos el flujo aquí porque habilitarEdicion ya maneja sus propios eventos asíncronos y refrescos
+            }
+            break;
+
+        case "AÑADIR_KEY":
+            const nuevaKey = prompt("Escribe el nombre de la NUEVA key/etiqueta (ej: d, q, etc.):");
+            if (!nuevaKey) return;
+
+            const keyFormateada = nuevaKey.trim();
+            if (keyFormateada === "idObj") {
+                alert("❌ No puedes crear una propiedad llamada 'idObj'.");
+                return;
+            }
+
+            if (objetoReal.hasOwnProperty(keyFormateada)) {
+                alert(`⚠️ La propiedad "${keyFormateada}" ya existe en este objeto.`);
+                return;
+            }
+
+            // Inicialización de contenedores especiales
+            if (keyFormateada === 'items' || keyFormateada === 'content' || keyFormateada === 'inv') {
+                if (confirm(`📦 Detectado nombre de contenedor ("${keyFormateada}").\n\n¿Quieres inicializarlo como un espacio vacío listo para guardar sub-objetos?`)) {
+                    objetoReal[keyFormateada] = [];
+                    alert(`¡Contenedor "${keyFormateada}" creado con éxito!\nAhora haz clic sobre su etiqueta para meter objetos.`);
+                    limpiarAlmacenesYRefrescar();
+                    return;
+                }
+            }
+
+            const nuevoValorInput = prompt(`Escribe el valor para "${keyFormateada}"\n(Soporta JSON crudo como: "texto", 42, true, [] o {}):`, '""');
+            if (nuevoValorInput === null) return;
+
+            try {
+                objetoReal[keyFormateada] = JSON.parse(nuevoValorInput);
+            } catch (e) {
+                objetoReal[keyFormateada] = nuevoValorInput;
+            }
+
+            alert(`¡Propiedad "${keyFormateada}" añadida con éxito!`);
+            limpiarAlmacenesYRefrescar();
+            break;
+
+        case "ELIMINAR_KEY":
+            const todasLasKeys = Object.keys(objetoReal);
+            if (todasLasKeys.length <= 1) {
+                alert(`⚠️ Error: No puedes eliminar "${clave}". Debe quedar al menos una propiedad para que el objeto no quede vacío.`);
+                return;
+            }
+
+            if (confirm(`🗑️ ¿Estás seguro de que deseas borrar la propiedad "${clave}" de este objeto?\n(Si es un contenedor, se perderán todos los sub-objetos de su interior)`)) {
+                delete objetoReal[clave];
+                alert(`Propiedad "${clave}" eliminated con éxito.`);
+                limpiarAlmacenesYRefrescar();
+            }
+            break;
+
+        case "AÑADIR_SUB_OBJETO":
+            const nombreSub = prompt("Nombre del nuevo sub-objeto:");
+            if (!nombreSub) return;
+            const cantidadSub = Number(prompt("Cantidad:", "1") || 1);
+
+            let maxId = 0;
+            const buscarMaxId = (o) => {
+                if (!o || typeof o !== 'object') return;
+                if (o.idObj && o.idObj > maxId) maxId = o.idObj;
+                for (let k in o) buscarMaxId(o[k]);
+            };
+            buscarMaxId(gameData.dynamicData);
+
+            const nuevoSubItem = { idObj: maxId + 1, n: nombreSub, q: cantidadSub, items: [] };
+            objetoReal[clave].push(nuevoSubItem);
+
+            alert(`¡Objeto "${nombreSub}" metido con éxito dentro de la lista!`);
+            limpiarAlmacenesYRefrescar();
+            break;
+    }
+}
+
+        // Pequeña utilidad para vaciar punteros temporales viejos antes de renderizar la pantalla nueva
+        function limpiarAlmacenesYRefrescar() {
+            window.objetosInventarioTemp = [];
+            window.listasInventarioTemp = [];
             updateUI();
         }
 
+        // Habilitar edición en línea para textos planos o propiedades
+        function habilitarEdicionArrayStringPj(elemento, claveLista, identificador) {
+            if (!gameData) return;
+            const selectedId = document.getElementById('charSelect').value;
+            const pj = gameData.dynamicData.chars[selectedId];
+
+            const input = document.createElement('input');
+            input.type = 'text';
+
+            let valorActual = pj[claveLista][identificador];
+            input.value = typeof valorActual === 'object' ? JSON.stringify(valorActual) : valorActual;
+
+            Object.assign(input.style, {
+                width: "80%",
+                background: "#000",
+                color: "#00ff00",
+                border: "1px solid var(--accent)",
+                fontFamily: "monospace"
+            });
+
+            const guardar = () => {
+                let nuevoValor = input.value.trim();
+                if (nuevoValor === "") return updateUI();
+                pj[claveLista][identificador] = nuevoValor;
+                updateUI();
+            };
+
+            input.onblur = guardar;
+            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            elemento.innerHTML = '';
+            elemento.appendChild(input);
+            input.focus();
+        }
         // Añadir elementos a las listas de Recuerdos y Extras
         function agregarElementoArrayStringPj(claveLista) {
             if (!gameData) return;
@@ -1386,39 +1816,6 @@ LÓGICA DE MUNDO:
             updateUI();
         }
 
-        // Habilitar edición en línea para textos planos o propiedades
-        function habilitarEdicionArrayStringPj(elemento, claveLista, identificador) {
-            if (!gameData) return;
-            const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
-
-            const input = document.createElement('input');
-            input.type = 'text';
-
-            let valorActual = pj[claveLista][identificador];
-            input.value = typeof valorActual === 'object' ? JSON.stringify(valorActual) : valorActual;
-
-            Object.assign(input.style, {
-                width: "80%",
-                background: "#000",
-                color: "#00ff00",
-                border: "1px solid var(--accent)",
-                fontFamily: "monospace"
-            });
-
-            const guardar = () => {
-                let nuevoValor = input.value.trim();
-                if (nuevoValor === "") return updateUI();
-                pj[claveLista][identificador] = nuevoValor;
-                updateUI();
-            };
-
-            input.onblur = guardar;
-            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
-            elemento.innerHTML = '';
-            elemento.appendChild(input);
-            input.focus();
-        }
         function habilitarEdicionEspecial(elemento, clave, pjId) {
             if (!gameData) return;
             const pj = gameData.dynamicData.chars[pjId];
@@ -1473,289 +1870,246 @@ LÓGICA DE MUNDO:
             textarea.focus();
         }
 
-        // CREAR un objeto siguiendo las reglas de IDs del motor
-        function crearObjetoEnZona(areaId, miniAreaId) {
+        function agregarPjCercano(pjId) {
             if (!gameData) return;
 
-            // 1. Obtener la ID única de forma segura según la regla nº 5 del motor
-            let nuevoId;
-            let worldState = gameData.dynamicData.worldState;
+            const pjsYaAgregados = (gameData.dynamicData.chars[pjId].detectedCharsNearbyList || []).map(item => item.nearby_pj_id);
 
-            if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
-                nuevoId = worldState.reusableObjIds[0]; // Vista previa del ID que se usará
-            } else {
-                nuevoId = worldState.lastGeneratedObjId + 1;
+            // 1. Obtener las IDs válidas
+            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
+                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
+            });
+
+            // 2. Mostrar la lista de IDs al usuario en un mensaje interactivo
+            const mensaje = `IDs de personajes disponibles:\n- ${todosLosPjs.join('\n- ')}\n\nEscribe exactamente el ID del personaje que deseas añadir:`;
+            const seleccion = prompt(mensaje);
+
+            if (!seleccion) return; // Si cancela, no hace nada
+
+            const idLimpia = seleccion.trim();
+
+            // 3. VALIDACIÓN ESTRICTA: Comprobar si el ID introducido existe en la lista
+            if (!todosLosPjs.includes(idLimpia)) {
+                alert(`🚨 ERROR: El ID "${idLimpia}" no pertenece a ningún personaje registrado en la partida.`);
+                return; // Detiene la creación
             }
 
-            // 2. Definir una plantilla visual para que el usuario conozca la estructura básica esperada
-            const plantillaEjemplo = {
-                "n": "Nombre del Objeto",
-                "d": "Descripción detallada...",
-                "q": 1,
-                "propiedadOpcionalCualquiera": "Valor",
-                "items": []
+            // 4. Estructura base para el nuevo objeto dentro del array
+            const nuevoPjCercano = {
+                nearby_pj_id: idLimpia,
+                recognized: false,
+                distance: "Cerca"
             };
 
-            const mensajePrompt = `Creando objeto en el Suelo. Se le asignará automáticamente el #ID: ${nuevoId}\n\n` +
-                `Escribe o pega el código JSON con las etiquetas que desees:`;
-
-            const inputUsuario = prompt(mensajePrompt, JSON.stringify(plantillaEjemplo, null, 4));
-
-            if (!inputUsuario) return; // Cancelado por el usuario
-
-            try {
-                // 3. Validar el formato JSON del string introducido
-                const objetoParseado = JSON.parse(inputUsuario);
-
-                if (Array.isArray(objetoParseado)) {
-                    alert("⚠️ Error de validación: Debes introducir un objeto '{}', no una lista '[]'.");
-                    return;
-                }
-
-                // 4. Confirmar y consumir definitivamente la ID del motor original
-                if (worldState.reusableObjIds && worldState.reusableObjIds.length > 0) {
-                    nuevoId = worldState.reusableObjIds.shift();
-                } else {
-                    worldState.lastGeneratedObjId++;
-                    nuevoId = worldState.lastGeneratedObjId;
-                }
-
-                // 5. Forzar la ID calculada para evitar colisiones manuales en el motor
-                objetoParseado.idObj = nuevoId;
-
-                // 6. Asegurar la persistencia en las miniÁreas del worldStorage
-                if (!gameData.dynamicData.worldStorage[areaId]) {
-                    gameData.dynamicData.worldStorage[areaId] = { weather: null, miniAreas: {} };
-                }
-                if (!gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId]) {
-                    gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId] = [];
-                }
-
-                // Push e inyección en el JSON de la simulación
-                gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId].push(objetoParseado);
-
-                alert(`¡Objeto creado correctamente con ID #${nuevoId} y etiquetas personalizadas!`);
-                updateUI();
-
-            } catch (error) {
-                // Validador de formato activo
-                alert("❌ ERROR JSON INVÁLIDO:\n\n" + error.message + "\n\nPor favor, revisa las comas y comillas dobles.");
+            // 5. Insertar en el JSON y actualizar la UI
+            if (!gameData.dynamicData.chars[pjId].detectedCharsNearbyList) {
+                gameData.dynamicData.chars[pjId].detectedCharsNearbyList = [];
             }
-        }
-// CREAR cualquier tipo de dato en el suelo (String, Número, Objeto JSON...)
-function crearCualquierDatoEnSuelo(areaId, miniAreaId) {
-    if (!gameData) return;
 
-    const input = prompt(
-        `➕ CREAR ELEMENTO EN EL SUELO (${miniAreaId})\n\n` +
-        `Puedes escribir un texto normal, o una estructura JSON cruda como:\n` +
-        `- Textos planos: Un texto de prueba cualquiera\n` +
-        `- Objetos manuales: {"probando": "un objeto sin idObj"}\n` +
-        `- Números o Booleanos: 100 o true`
-    );
-
-    if (input === null) return; // Cancelado
-
-    let datoFinal;
-    try {
-        // Intentamos parsear por si el usuario insertó un objeto, array, número o booleano
-        datoFinal = JSON.parse(input);
-    } catch (e) {
-        // Si el parseo falla, asumimos que es una cadena de texto plana (String)
-        datoFinal = input;
-    }
-
-    // Asegurar estructura segura de la miniÁrea
-    if (!gameData.dynamicData.worldStorage[areaId]) {
-        gameData.dynamicData.worldStorage[areaId] = { weather: null, miniAreas: {} };
-    }
-    if (!gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId]) {
-        gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId] = [];
-    }
-
-    // Insertar directamente el dato crudo en el array
-    gameData.dynamicData.worldStorage[areaId].miniAreas[miniAreaId].push(datoFinal);
-    
-    alert("¡Elemento añadido al suelo!");
-    updateUI();
-}
-
-// EDITAR o ELIMINAR un elemento en base a su posición en la lista del suelo
-function gestionarElementoSuelo(index, areaId, miniAreaId) {
-    const listaSuelo = gameData.dynamicData.worldStorage[areaId]?.miniAreas[miniAreaId];
-    if (!listaSuelo || listaSuelo[index] === undefined) {
-        alert("No se encontró el elemento seleccionado.");
-        return;
-    }
-
-    const valorActual = listaSuelo[index];
-
-    const opcion = prompt(
-        `🌍 EDITOR DE SUELO CRUDO (Posición: ${index})\n` +
-        `Contenido actual: ${JSON.stringify(valorActual)}\n\n` +
-        `Elige una acción:\n` +
-        `1️⃣  Editar este dato por completo\n` +
-        `2️⃣  ELIMINAR este elemento del suelo`, 
-        "1"
-    );
-
-    if (!opcion) return;
-
-    // --- OPCIÓN 1: EDITAR EL DATO COMPLETO ---
-    if (opcion === "1") {
-        const porDefecto = (typeof valorActual === 'object' && valorActual !== null) 
-            ? JSON.stringify(valorActual, null, 4) 
-            : valorActual;
-
-        const nuevoInput = prompt(`Introduce el nuevo valor para la posición ${index}:`, porDefecto);
-        if (nuevoInput === null) return;
-
-        try {
-            listaSuelo[index] = JSON.parse(nuevoInput);
-        } catch (e) {
-            listaSuelo[index] = nuevoInput; // Guarda como string plano si no es JSON válido
-        }
-
-        alert("¡Elemento del suelo actualizado con éxito!");
-        updateUI();
-    } 
-    
-    // --- OPCIÓN 2: ELIMINAR EL DATO ---
-    else if (opcion === "2") {
-        if (confirm(`🗑️ ¿Estás seguro de que deseas eliminar este elemento del suelo?`)) {
-            listaSuelo.splice(index, 1); // Lo remueve físicamente del array por su índice
-            alert("Elemento eliminado del suelo.");
+            gameData.dynamicData.chars[pjId].detectedCharsNearbyList.push(nuevoPjCercano);
+            alert(`✅ Añadido "${idLimpia}" a la lista de personajes cercanos.`);
             updateUI();
         }
-    } else {
-        alert("❌ Opción no válida.");
-    }
-}
-function moverPosicionSuelo(areaId, miniAreaId, indiceActual, direccion) {
-    const listaSuelo = gameData.dynamicData.worldStorage[areaId]?.miniAreas[miniAreaId];
-    if (!listaSuelo) return;
 
-    // Calcular la nueva posición matemática (indiceActual + 1 o indiceActual - 1)
-    const nuevoIndice = indiceActual + direccion;
+        function habilitarEdicionElegirIDPj(elemento, pjId, index) {
+            const currentVal = gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id;
+            const pjsYaAgregados = gameData.dynamicData.chars[pjId].detectedCharsNearbyList
+                .map(item => item.nearby_pj_id)
+                .filter(id => id !== currentVal);
+            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
 
-    // Validar que el movimiento esté dentro de los límites del array
-    if (nuevoIndice < 0 || nuevoIndice >= listaSuelo.length) return;
+                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
+            });
 
-    // Intercambiar los elementos en una sola línea usando destructuración de JavaScript
-    [listaSuelo[indiceActual], listaSuelo[nuevoIndice]] = [listaSuelo[nuevoIndice], listaSuelo[indiceActual]];
+            const select = document.createElement('select');
+            select.style.padding = "2px";
+            select.style.background = "#222";
+            select.style.color = "#fff";
 
-    // Refrescar los componentes visuales del HTML para ver el cambio en tiempo real
-    updateUI();
-}
+            todosLosPjs.forEach(id => {
+                const option = new Option(id, id);
+                select.add(option);
+            });
+
+            select.value = currentVal;
+
+            const guardar = () => {
+                const nuevoValor = select.value;
+                gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id = nuevoValor;
+                updateUI();
+            };
+
+            select.onchange = guardar;
+            select.onblur = updateUI; // Si hace clic fuera sin cambiar nada, revierte el select al texto normal
+
+            elemento.innerHTML = '';
+            elemento.appendChild(select);
+            select.focus();
+        }
 
         const UIComponents = {
-            stats: (selectedId, char, infoClima) => `<div class="data-box">
+            stats: (selectedId) => {
+                let pj = gameData.dynamicData.chars[selectedId];
+                const currentPath = findSubAreaPath(pj.currentSubArea_id);
+                const pathString = currentPath.length > 0 ? currentPath.join(" ➔ ") : "Desconocida";
+                const displayWeather = getInheritedWeather(currentPath);
+
+                // =========================================================================
+                // 🛠️ FILTRADO INTELIGENTE DE SUBÁREAS PROFUNDAS (HOJAS TERMINALES)
+                // =========================================================================
+                
+                // 1. Función auxiliar para verificar si una subárea tiene más subáreas dentro
+                function tieneHijosSubArea(nodo) {
+                    if (!nodo || !nodo.subAreas) return false;
+                    // Si el objeto 'subAreas' tiene al menos una clave, no es el nivel más profundo
+                    return Object.keys(nodo.subAreas).length > 0;
+                }
+
+                // 2. Recolectamos de forma recursiva SOLO las subáreas finales del árbol
+                let selectOptions = "";
+                function generarOpcionesProfundas(nodoAreas, prefijo = "") {
+                    if (!nodoAreas) return;
+
+                    for (let idArea in nodoAreas) {
+                        // 🛑 FILTRO DE SEGURIDAD CRÍTICO: Si es el limbo, lo ignoramos por completo
+                        if (idArea === 'SYSTEM_LOST_FOUND') continue;
+                        const area = nodoAreas[idArea];
+                        const nombreMostrar = area.name || idArea;
+                        
+                        // Si NO tiene subáreas más adentro, ¡es una candidata válida para teletransporte!
+                        if (!tieneHijosSubArea(area)) {
+                            const labelCompleto = prefijo ? `${prefijo} ➔ ${nombreMostrar}` : nombreMostrar;
+                            const selected = idArea === pj.currentSubArea_id ? 'selected' : '';
+                            selectOptions += `<option value="${idArea}" ${selected}>${labelCompleto} (${idArea})</option>`;
+                        } 
+                        
+                        // Si tiene hijos, omitimos añadirla, pero seguimos explorando sus entrañas
+                        if (area.subAreas) {
+                            generarOpcionesProfundas(area.subAreas, prefijo ? `${prefijo} ➔ ${nombreMostrar}` : nombreMostrar);
+                        }
+                    }
+                }
+
+                // Ejecutamos la recolección desde la raíz del almacenamiento del mapa mundial
+                if (gameData && gameData.dynamicData && gameData.dynamicData.worldStorage) {
+                    generarOpcionesProfundas(gameData.dynamicData.worldStorage);
+                }
+                // =========================================================================
+
+                return `<div class="data-box">
             <h3>📊 Ficha: ID: ${selectedId} | 
-            Apodo: <span class="editable-val" onclick="habilitarEdicionText(this, 'nick', gameData.dynamicData.chars['${selectedId}'])">${char.nick}</span> | 
-            Edad: <span class="editable-val" onclick="habilitarEdicionNumber(this, 'age', gameData.dynamicData.chars['${selectedId}'], 0)">${char.age}</span> | 
-            Género: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'fem', gameData.dynamicData.chars['${selectedId}'], 'Femenino ♀', 'Masculino ♂')">${char.fem ? 'Femenino ♀' : 'Masculino ♂'}</span> | 
-            Omnipotente: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'omnipotent', gameData.dynamicData.chars['${selectedId}'])">${char.omnipotent ? 'Sí' : 'No'}</span>
-            Contador Esporas Bosque mágico: <span class="editable-val" onclick="habilitarEdicion(this, 'magicForestToxin_h', gameData.dynamicData.chars['${selectedId}'], 0.00, ${gameData.worldMechanics.magicForestSpores.magicForestSporesImmunity})">${char.magicForestToxin_h}</span> |
-            Estado: <span class="editable-val" onclick="habilitarEdicionText(this, 'state', gameData.dynamicData.chars['${selectedId}'])">${char.state}</span></h3>
-            <p>📍 
-            <span class="editable-val" onclick="habilitarEdicionArea(this, '${selectedId}')"><strong>${char.currentArea_id}</strong></span> > 
-            <span class="editable-val" onclick="habilitarEdicionMiniArea(this, '${selectedId}')"><strong>${char.currentMiniArea_id}</strong></span> | 
-            ☁️ <span class="editable-val" onclick="habilitarEdicionClima(this, '${char.currentArea_id}')"><strong>${infoClima}</strong></span>
-            </p>
+            Apodo: <span class="editable-val" onclick="habilitarEdicionText(this, 'nick', gameData.dynamicData.chars['${selectedId}'])">${pj.nick}</span> | 
+            Edad: <span class="editable-val" onclick="habilitarEdicionNumber(this, 'age', gameData.dynamicData.chars['${selectedId}'], 0)">${pj.age}</span> | 
+            Género: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'fem', gameData.dynamicData.chars['${selectedId}'], 'Femenino ♀', 'Masculino ♂')">${pj.fem ? 'Femenino ♀' : 'Masculino ♂'}</span> | 
+            Omnipotente: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'omnipotent', gameData.dynamicData.chars['${selectedId}'])">${pj.omnipotent ? 'Sí' : 'No'}</span>
+            Contador Esporas Bosque mágico: <span class="editable-val" onclick="habilitarEdicion(this, 'magicForestToxin_h', gameData.dynamicData.chars['${selectedId}'], 0.00, 16.00)">${pj.magicForestToxin_h}</span> |
+            Estado: <span class="editable-val" onclick="habilitarEdicionText(this, 'state', gameData.dynamicData.chars['${selectedId}'])">${pj.state}</span></h3>
+            <hr>
+            <div class="data-box">
+            <h3>🗺️ Ubicación del Personaje</h3>
+            <p><strong>Ruta Actual:</strong> <span style="color: var(--accent);">${pathString}</span></p>
+            
+            <label><strong>Cambiar SubÁrea:</strong></label>
+            <select class="nav-btn" style="background:#222; width:100%; margin-top:5px;" 
+                    onchange="updateValue('chars.${selectedId}.currentSubArea_id', this.value)">
+                <option value="">🚫 Ninguna (Suelo global)</option>
+                ${selectOptions}
+            </select>
+        </div>
+        <p><strong>Clima Local:</strong> 
+            <span style="color: #56b6c2; cursor: pointer; border-bottom: 1px dashed #56b6c2;" 
+                  onclick="habilitarEdicionClima(this, '${pj.currentSubArea_id}')">
+                ⛅ ${displayWeather} (Click para cambiar)
+            </span>
+        </p>
             <hr>
                 <div class="stat-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
                     ${['food', 'water', 'sleep', 'hp', 'energy', 'magDmg', 'magDef', 'flySpd', 'physDmg', 'physDef', 'runSpd', 'refl'].map(stat => {
-                if (!char[stat]) {
-                    char[stat] = [0, 0];
-                }
-                return `<p>
+                    if (!pj[stat]) {
+                        pj[stat] = [0, 0];
+                    }
+                    return `<p>
                 <strong>${UIComponents.translate(stat)}:</strong> 
-                    ${char[stat][0] == 0 && char[stat][1] == 0 ? `<span>(No tiene)</span>` : ``}
-                    <span class="editable-val" onclick="habilitarEdicionStatsConDecay(this, '${selectedId}', '${stat}', 0)">${char[stat][0]}</span> / 
-                    <span class="editable-val" onclick="habilitarEdicionStatsConDecay(this, '${selectedId}', '${stat}', 1)">${char[stat][1]}</span>
+                    ${pj[stat][0] == 0 && pj[stat][1] == 0 ? `<span>(No tiene)</span>` : ``}
+                    <span class="editable-val" onclick="habilitarEdicionStats(this, '${selectedId}', '${stat}', 0)">${pj[stat][0]}</span> / 
+                    <span class="editable-val" onclick="habilitarEdicionStats(this, '${selectedId}', '${stat}', 1)">${pj[stat][1]}</span>
                 </p>`;
-            }).join('')}
+                }).join('')}
                 </div>
-        </div>`,
-            inventory: (char, localItems) => `<div class="data-box" style="border-left-color: #3498db;">
-    <h3>🎒 Inventario Personal</h3>
-    ${detallar(char.inv, true, "", null)}
-</div>
-<div class="data-box" style="border-left-color: #2ecc71;">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-        <h3 style="margin: 0;">📦 Suelo (${char.currentMiniArea_id})</h3>
-        <button class="btn-sm" style="background: #2ecc71; font-weight: bold; padding: 6px 12px;" 
-                onclick="crearObjetoEnZona('${char.currentArea_id}', '${char.currentMiniArea_id}')">
-            ➕ Crear Objeto (Con idObj generado)
-        </button>
-        <button class="btn-sm" style="background: #2ecc71; font-weight: bold; padding: 6px 12px;" 
-                onclick="crearCualquierDatoEnSuelo('${char.currentArea_id}', '${char.currentMiniArea_id}')">
-            ➕ Crear Elemento Crudo
-        </button>
-    </div>
-    <div style="display: flex; flex-direction: column; gap: 8px;">
-        ${localItems.length > 0 ? localItems.map((item, idx) => {
-            // Evaluamos si puede subir o bajar en la lista
-            const puedeSubir = idx > 0;
-            const puedeBajar = idx < localItems.length - 1;
+        </div>`
+            },
+            inventory: (pj) => {
+                if (!pj) return `<div class="data-box">⚠️ Error: Personaje no disponible.</div>`;
 
-            // HTML común para los botones de ordenación de esta fila
-            const botonesOrdenacion = `<button class="btn-sm" style="background:#333; border: 1px solid #555; padding: 2px 6px; margin-right:2px; opacity:${puedeSubir ? 1 : 0.2}" 
-            onclick="moverPosicionSuelo('${char.currentArea_id}', '${char.currentMiniArea_id}', ${idx}, -1)" ${!puedeSubir ? 'disabled' : ''}>▲</button>
-    <button class="btn-sm" style="background:#333; border: 1px solid #555; padding: 2px 6px; margin-right:8px; opacity:${puedeBajar ? 1 : 0.2}" 
-            onclick="moverPosicionSuelo('${char.currentArea_id}', '${char.currentMiniArea_id}', ${idx}, 1)" ${!puedeBajar ? 'disabled' : ''}>▼</button>`;
+                const selectedId = document.getElementById('charSelect').value;
 
-            if (typeof item === 'object' && item !== null) {
-                return `<div class="item-card" style="position:relative; border: 1px dashed #444; padding: 5px; margin-bottom:5px;">
-                    <div style="position:absolute; top:5px; right:5px; z-index:10; display:flex; align-items:center;">
-                        ${botonesOrdenacion}
-                        <button class="btn-sm" style="background:#e67e22; padding:2px 6px;" onclick="gestionarElementoSuelo(${idx}, '${char.currentArea_id}', '${char.currentMiniArea_id}')">🛠️</button>
-                    </div>
-                    ${detallar(item, false, "", null, localItems, idx)}
-                </div>`;
-            } else {
-                return `<div class="item-row" style="background: rgba(255,255,255,0.02); padding: 8px; border-radius: 4px; display:flex; justify-content:space-between; align-items:center;">
-                    <div class="item-info" style="font-family:monospace; color:#00ff00; cursor:pointer;" onclick="gestionarElementoSuelo(${idx}, '${char.currentArea_id}', '${char.currentMiniArea_id}')">
-                        <span style="color:#aaa; font-size:0.85em;">[Índice ${idx}]</span> ${JSON.stringify(item)}
-                    </div>
-                    <div class="item-actions" style="display:flex; align-items:center;">
-                        ${botonesOrdenacion}
-                        <button class="btn-sm" style="background:#e67e22" onclick="gestionarElementoSuelo(${idx}, '${char.currentArea_id}', '${char.currentMiniArea_id}')">🛠️</button>
-                    </div>
-                </div>`;
-            }
-        }).join("") : "<p style='color: #666; font-style: italic;'>Vacío</p>"}
-    </div>
-</div>`,
-            world: (dynamicData) => `<div class="data-box" style="border-left-color: #f1c40f;">
+                // Conseguimos el objeto del suelo y su ruta JSON real
+                const currentSubAreaObj = getSubAreaObject(pj.currentSubArea_id) || {};
+                const pathSueloJson = getSubAreaJsonPath(pj.currentSubArea_id);
+
+                return `
+        <div class="data-box">
+            <button class="nav-btn" style="padding:3px 8px; font-size:0.85em; background:#27ae60; float:right;" onclick="crearObjetoEnPath('chars.${selectedId}.inv')">+ Nuevo Ítem</button>
+            <h3>🎒 Inventario de ${selectedId}</h3>
+            <div style="margin-top:10px;">
+                ${detallar(pj.inv || [], true, null, pj.inv || [], -1, `chars.${selectedId}.inv`)}
+            </div>
+        </div>
+        
+        <div class="data-box" style="margin-top:15px;">
+            ${pathSueloJson ? `<button class="nav-btn" style="padding:3px 8px; font-size:0.85em; background:#27ae60; float:right;" onclick="crearObjetoEnPath('${pathSueloJson}.items')">+ Nuevo Ítem</button>` : ''}
+            <h3>👇 Suelo Actual (${pj.currentSubArea_id || "Desconocido"})</h3>
+            <div style="margin-top:10px;">
+                ${currentSubAreaObj.items ? detallar(currentSubAreaObj.items, false, null, currentSubAreaObj.items, -1, `${pathSueloJson}.items`) : '<span style="color:#666;">No hay datos de suelo</span>'}
+            </div>
+        </div>
+    `;
+            },
+            world: (dynamicData) => {
+                // 1. Localizamos de forma segura el array de ítems dentro del Limbo
+                const limboObj = dynamicData.worldStorage ? dynamicData.worldStorage["SYSTEM_LOST_FOUND"] : null;
+                const itemsLimbo = (limboObj && limboObj.subAreas && limboObj.subAreas.Contenedor_Global)
+                    ? limboObj.subAreas.Contenedor_Global.items
+                    : [];
+
+                return `
+        <div class="data-box" style="border-left-color: #f1c40f;">
             <h3>Escenario Global</h3>
             <p><strong>Dificultad:</strong> 
-            <span class="editable-val" onclick="habilitarEdicion(this, 'currDiff', gameData.dynamicData.worldState)">${dynamicData.worldState.currDiff}</span>
-        </p>
-        <p><strong>Día:</strong> 
-            <span class="editable-val" onclick="habilitarEdicion(this, 'day', gameData.dynamicData.worldState.time)">${dynamicData.worldState.time.day}</span>
-        </p>
-        <p><strong>Hora:</strong> 
-            <span class="editable-val" onclick="habilitarEdicion(this, 'h', gameData.dynamicData.worldState.time)">${dynamicData.worldState.time.h}</span>
-        </p>
-        <p><strong>Idioma:</strong> 
-            <span class="editable-val" onclick="habilitarEdicion(this, 'gameLang',  gameData.dynamicData.worldState)">${dynamicData.worldState.gameLang}</span>
-        </p>
-        <p><strong>Turno Actual ID Jugador:</strong> 
-            <span class="editable-val" onclick="habilitarEdicion(this, 'turnActionPlayer_id',  gameData.dynamicData.worldState)">${dynamicData.worldState.turnActionPlayer_id}</span>
-        </p>
+                <span class="editable-val" onclick="habilitarEdicion(this, 'currDiff', gameData.dynamicData.worldState)">${dynamicData.worldState.currDiff}</span>
+            </p>
+            <p><strong>Día:</strong> 
+                <span class="editable-val" onclick="habilitarEdicion(this, 'day', gameData.dynamicData.worldState.time)">${dynamicData.worldState.time.day}</span>
+            </p>
+            <p><strong>Hora:</strong> 
+                <span class="editable-val" onclick="habilitarEdicion(this, 'h', gameData.dynamicData.worldState.time)">${dynamicData.worldState.time.h}</span>
+            </p>
+            <p><strong>Idioma:</strong> 
+                <span class="editable-val" onclick="habilitarEdicion(this, 'gameLang',  gameData.dynamicData.worldState)">${dynamicData.worldState.gameLang}</span>
+            </p>
+            <p><strong>Turno Actual ID Jugador:</strong> 
+                <span class="editable-val" onclick="habilitarEdicion(this, 'turnActionPlayer_id',  gameData.dynamicData.worldState)">${dynamicData.worldState.turnActionPlayer_id}</span>
+            </p>
         </div>
-        ${dynamicData.worldStorage["SYSTEM_LOST_FOUND"] && dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global.length > 0 ? `
-    <div class="data-box" style="border-left: 4px solid #9b59b6; background: #251b2d; margin-top:15px;">
-        <h3 style="color:#9b59b6">🌌 Limbo Global</h3>
-        ${detallar(dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global, true, 'LIMBO', null, dynamicData.worldStorage["SYSTEM_LOST_FOUND"].miniAreas.Contenedor_Global, -1)} 
-    </div>` : ""}`,
+
+        ${itemsLimbo && itemsLimbo.length > 0 ? `
+            <div class="data-box" style="border-left: 4px solid #9b59b6; background: #251b2d; margin-top:15px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="color:#9b59b6; margin:0;">🌌 Limbo Global (Contenedor_Global)</h3>
+                </div>
+                <div style="margin-top:10px;">
+                    ${detallar(itemsLimbo, true, null, itemsLimbo, -1, 'worldStorage.SYSTEM_LOST_FOUND.subAreas.Contenedor_Global.items')} 
+                </div>
+            </div>
+        ` : ""}
+    `;
+            },
             extra: (char) => {
                 const selectedId = document.getElementById('charSelect').value;
 
                 // Asegurar inicializaciones por si vienen indefinidos en el JSON
-                if (!char.memories) char.memories = [];
                 if (!char.skills) char.skills = [];
+                if (!char.memories) char.memories = [];
                 if (!char.detectedCharsNearbyList) char.detectedCharsNearbyList = [];
 
                 // Renderizador interno para listas de strings con controles de ordenación
@@ -1803,15 +2157,30 @@ function moverPosicionSuelo(areaId, miniAreaId, indiceActual, direccion) {
                     `).join('');
                 }
 
+                let appearanceHtml = "";
+    if (char.appearance && typeof char.appearance === 'object') {
+        // Creamos una referencia temporal en window.objetosInventarioTemp para que detallar() 
+        // pueda vincular los inputs de edición directamente al objeto real en memoria
+        if (!window.objetosInventarioTemp) window.objetosInventarioTemp = [];
+        const idObjAlmacen = window.objetosInventarioTemp.length;
+        window.objetosInventarioTemp.push(char.appearance);
+
+        // Pasamos el objeto appearance por la función detallar()
+        // Usamos esInventario = true para un estilo compacto y pasamos el ID del almacén temporal
+        appearanceHtml = `
+            <div class="data-box" style="border-left-color: #9b59b6; background: rgba(155, 89, 182, 0.05);">
+                <h3 style="margin-top: 0; color: #b388ff;">🎭 Atributos de Apariencia</h3>
+                <p style="font-size: 0.8em; color: #aaa; margin-bottom: 10px;">
+                    💡 Haz clic sobre los valores subrayados para editarlos. El prompt y el JSON se actualizarán automáticamente.
+                </p>
+                ${detallar(char.appearance, true, null, null, -1, "appearance")}
+            </div>
+        `;
+    } else {
+        appearanceHtml = `<p style="color: #888; font-style: italic;">Este personaje no tiene especificada una apariencia.</p>`;
+    }
+
                 return `<div class="data-box" style="border-left-color: #9b59b6;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
-                        <h3>✨ Memorias (Recuerdos)</h3>
-                        <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarElementoArrayStringPj('memories')">➕ Añadir</button>
-                    </div>
-                    <div style="background:rgba(0,0,0,0.15); border-radius:4px; margin-bottom:15px;">
-                        ${renderListaPlana(char.memories, 'memories')}
-                    </div>
-                    
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                         <h3>⚔️ Habilidades (Skills)</h3>
                         <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarElementoArrayStringPj('skills')">➕ Añadir</button>
@@ -1819,7 +2188,7 @@ function moverPosicionSuelo(areaId, miniAreaId, indiceActual, direccion) {
                     <div style="background:rgba(0,0,0,0.15); border-radius:4px; margin-bottom:15px;">
                         ${renderListaPlana(char.skills, 'skills')}
                     </div>
-                    
+
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                         <h3>🧪 Efectos Activos</h3>
                     </div>
@@ -1829,6 +2198,12 @@ function moverPosicionSuelo(areaId, miniAreaId, indiceActual, direccion) {
         ${char.activeEffects ? JSON.stringify(char.activeEffects) : "No definido ( Formato [ { } ] )"}
     </span>
 </div>        
+
+<div style="margin-top: 20px;">
+            <h2 style="color: #b388ff; border-bottom: 1px solid #333; padding-bottom: 5px;">👤 Rasgos Físicos (Appearance)</h2>
+            ${appearanceHtml}
+        </div>
+
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
                         <h3>👁️ Personajes Detectados Cerca</h3>
                         <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarPjCercano('${selectedId}')">➕ Añadir</button>
@@ -1846,6 +2221,14 @@ function moverPosicionSuelo(areaId, miniAreaId, indiceActual, direccion) {
         ${char.extra ? JSON.stringify(char.extra) : "No definido ( Formato [ { } ] )"}
     </span>
 </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 5px;">
+                            <h3>✨ Memorias (Recuerdos)</h3>
+                            <button class="btn-sm" style="background:#9b59b6; font-weight:bold;" onclick="agregarElementoArrayStringPj('memories')">➕ Añadir</button>
+                        </div>
+                        <div style="background:rgba(0,0,0,0.15); border-radius:4px; margin-bottom:15px;">
+                            ${renderListaPlana(char.memories, 'memories')}
+                    </div>
                 </div>`;
             },
             prompt: (selectedId, dynamicData) => {

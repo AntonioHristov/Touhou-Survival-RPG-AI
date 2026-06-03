@@ -1,5 +1,8 @@
 /saves/Esync*
 /saves/EIndex*
 /saves/datosaux.json
+/saves/datosBaseCopia.json
+/saves/new.json
+/saves/old.json
 /indexcopia.html
 /syncJSONcopia.html
