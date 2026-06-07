@@ -527,13 +527,24 @@
             // =================================================================
             // 🔥 NUEVO: INTERCEPTOR RADAR PARA CAPTURAR CUALQUIER ALTERACIÓN
             // =================================================================
-            if (pathArr.length >= 2 && pathArr[0] === 'chars') {
-                const charId = pathArr[1];
+            if (pathArr.length >= 4 && pathArr[0] === 'chars') {
+                // Detectamos que estamos modificando un stat (valor actual en índice -1)
+    const valorIdx = pathArr.length - 1;
+    const statKey = pathArr[pathArr.length - 2];
+// Obtenemos el ID del personaje. 
+    // Si la estructura es ['chars', 'grupo', 'id', 'stat', 0]
+    // El ID siempre está en la posición 2.
+    const charId = pathArr[2];
                 if (charId && typeof charId === 'string' && charId !== 'id_tplMANDATORY' && window.personajesManipulados) {
                     window.personajesManipulados.add(charId);
                 }
             }
             // =================================================================
+// Si el valor no existía (undefined) o estamos añadiendo una clave a un objeto existente, 
+// no es un "cambio de tipo", es una expansión de datos.
+            if (valorOriginal === undefined || (typeof valorOriginal === 'object' && valorOriginal !== null && !valorOriginal.hasOwnProperty(pathArr[pathArr.length - 1]))) {
+    return { aprobado: true, value: nuevoValor };
+}
 
             // Si el original era número y la IA envía un string numérico, lo sanamos automáticamente
             if (tipoOriginal === 'number' && tipoNuevo === 'string' && !isNaN(nuevoValor) && nuevoValor.trim() !== '') {
@@ -698,7 +709,7 @@
             }
 
             // VALIDACIÓN MECÁNICA: Ubicación inexistente para personajes
-            if (stringPath.endsWith('current_location') && typeof nuevoValor === 'string') {
+            if (stringPath.endsWith('currentSubArea_id') && typeof nuevoValor === 'string') {
                 const mapaExiste = existeUbicacionEnMapa(baseRoot.worldStorage || {}, nuevoValor);
 
                 if (!mapaExiste) {
@@ -725,31 +736,43 @@
                 }
             }
 
-            if (pathArr.length >= 4 && pathArr[0] === 'chars' && pathArr[3] === 0) {
-                const charId = pathArr[1];
-                const statKey = pathArr[2];
-                if (baseRoot.chars && baseRoot.chars[charId] && Array.isArray(baseRoot.chars[charId][statKey])) {
-                    const statArray = baseRoot.chars[charId][statKey];
-                    const maxValor = statArray[1] !== undefined ? statArray[1] : Infinity;
-                    if (typeof nuevoValor === 'number' && (nuevoValor < 0 || nuevoValor > maxValor)) {
-                        let valorReparado = nuevoValor < 0 ? 0 : maxValor;
-                        const conflictoKey = `${tipoFase}_STAT_${stringPath}`;
-                        if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1");
-                        const opcionElegida = mapaConflictos.get(conflictoKey);
+// La ruta es: ['chars', 'players'/'npcs'/'templates', 'idPersonaje', 'nombreStat', 0]
+            // Por lo tanto, el ID está en el índice 2 y el stat en el 3
+            if (pathArr.length >= 5 && pathArr[0] === 'chars') {
+                const grupo = pathArr[1]; // 'players', 'npcs' o 'templates'
+                const charId = pathArr[2]; // 'P1'
+                const statKey = pathArr[3]; // 'hp', 'energy', etc.
+                const esValorActual = pathArr[4] === 0;
 
-                        registroLogs.push(`
-                    <div class="conflict-row">
-                        ⚠️ <strong>[DESBORDAMIENTO EN STAT]</strong> Valor fuera de rango para <code>${statKey}</code> de <strong>${charId}</strong>.
-                        <div class="conflict-actions">
-                            <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">1 - Rechazar Cambio</button>
-                            <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">2 - Forzar Valor IA</button>
-                            <button class="btn-decision ${opcionElegida === '3' ? 'active' : ''}" data-opt="3" onclick="cambiarDecision('${conflictoKey}', '3')">3 - Reparar a Límite (${valorReparado})</button>
-                        </div>
-                    </div>
-                `);
-                        if (opcionElegida === "1") return { aprobado: false, value: null };
-                        if (opcionElegida === "2") return { aprobado: true, value: nuevoValor };
-                        if (opcionElegida === "3") return { aprobado: true, value: valorReparado };
+                if (esValorActual && baseRoot.chars && baseRoot.chars[grupo] && baseRoot.chars[grupo][charId]) {
+                    const personaje = baseRoot.chars[grupo][charId];
+                    
+                    if (Array.isArray(personaje[statKey])) {
+                        const statArray = personaje[statKey];
+                        const maxValor = statArray[1] !== undefined ? statArray[1] : Infinity;
+                        
+                        if (typeof nuevoValor === 'number' && (nuevoValor < 0 || nuevoValor > maxValor)) {
+                            let valorReparado = nuevoValor < 0 ? 0 : maxValor;
+                            const conflictoKey = `${tipoFase}_STAT_${stringPath}`;
+                            
+                            if (!mapaConflictos.has(conflictoKey)) mapaConflictos.set(conflictoKey, "1");
+                            const opcionElegida = mapaConflictos.get(conflictoKey);
+
+                            registroLogs.push(`
+                                <div class="conflict-row">
+                                    ⚠️ <strong>[DESBORDAMIENTO EN STAT]</strong> Valor ${nuevoValor} fuera de rango para <code>${statKey}</code> de <strong>${charId}</strong> [${grupo}].
+                                    <div class="conflict-actions">
+                                        <button class="btn-decision ${opcionElegida === '1' ? 'active' : ''}" data-opt="1" onclick="cambiarDecision('${conflictoKey}', '1')">1 - Rechazar</button>
+                                        <button class="btn-decision ${opcionElegida === '2' ? 'active' : ''}" data-opt="2" onclick="cambiarDecision('${conflictoKey}', '2')">2 - Forzar IA</button>
+                                        <button class="btn-decision ${opcionElegida === '3' ? 'active' : ''}" data-opt="3" onclick="cambiarDecision('${conflictoKey}', '3')">3 - Reparar (${valorReparado})</button>
+                                    </div>
+                                </div>
+                            `);
+                            
+                            if (opcionElegida === "1") return { aprobado: false, value: null };
+                            if (opcionElegida === "2") return { aprobado: true, value: nuevoValor };
+                            if (opcionElegida === "3") return { aprobado: true, value: valorReparado };
+                        }
                     }
                 }
             }
@@ -788,6 +811,20 @@
             if (Array.isArray(actions.sequence)) {
                 actions.sequence.forEach((action, index) => {
                     const paso = `<strong>[Paso ${index + 1}]</strong>`;
+        
+        if (action.path && Array.isArray(action.path) && action.path.length > 0) {
+            const primerElemento = action.path[0];
+            
+            // Si el path no empieza por "chars", intentamos resolverlo
+            if (primerElemento !== "chars") {
+                const rutaResuelta = resolverRutaPersonaje(baseRoot, primerElemento);
+                if (rutaResuelta) {
+                    // Reconstruimos el path completo: ej. ["chars", "players", "P1", ...] + ["hp", 0]
+                    action.path = [...rutaResuelta, ...action.path.slice(1)];
+                    logs.push(`<div class='log-entry'>${paso} 🔍 <em>Ruta resuelta automáticamente para ID "${primerElemento}":</em> <code>${JSON.stringify(action.path)}</code></div>`);
+                }
+            }
+        }
 
                     switch (action.op) {
                         case "delete":
@@ -881,20 +918,23 @@
                             const idAMover = action.targetId !== undefined ? action.targetId : action.id;
 
                             if (idAMover !== undefined && Array.isArray(action.to)) {
-                                const destino = getValueByPath(baseRoot, action.to);
+let rutaDestino = [...action.to];
+        const primerElemento = rutaDestino[0];
+        if (primerElemento !== "chars") {
+            const rutaPersonaje = resolverRutaPersonaje(baseRoot, primerElemento);
+            if (rutaPersonaje) {
+                rutaDestino = [...rutaPersonaje, ...rutaDestino.slice(1)];
+            }
+        }
+        const destino = getValueByPath(baseRoot, rutaDestino);
                                 if (!destino) {
                                     logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Destino inaccesible para mover el objeto ID ${idAMover}.</div>`);
                                     break;
                                 }
-
-                                // 1. Buscamos el objeto para clonar sus datos ANTES de que 'findAndExtractObjId' lo extirpe de su sitio
-                                // Nota: Si tienes una función específica para buscar sin borrar úsala, si no, podemos usar un truco intermedio.
-                                // Asumiendo que findAndExtractObjId extrae el objeto, lo guardamos en una variable.
                                 const objetoMovido = findAndExtractObjId(baseRoot, idAMover);
 
                                 if (objetoMovido) {
-                                    // Evaluamos el cambio antes de insertarlo en el destino para activar tus alertas de seguridad
-                                    const decisionMove = evaluarYRegistrarCambio(baseRoot, action.to, objetoMovido, "aiActions(Move)", logs);
+                                    const decisionMove = evaluarYRegistrarCambio(baseRoot, rutaDestino, objetoMovido, "aiActions(Move)", logs);
                                     if (!decisionMove.aprobado) {
                                         // Si el usuario o el sistema lo rechaza, lo devolvemos a donde estaba (o evitamos perderlo)
                                         // (Dependiendo de tu arquitectura, aquí podrías reinsertarlo, pero si está aprobado seguimos:)
@@ -929,14 +969,27 @@
                             break;
 
                         case "create":
-                            if (Array.isArray(action.to) && action.data) {
-                                const targetContainer = getValueByPath(baseRoot, action.to);
-                                if (!targetContainer) break;
+                            if (Array.isArray(action.to) && action.data !== undefined) {
+                                let rutaDestino = [...action.to];
+                                const primerElemento = rutaDestino[0];
+
+                                // Si no empieza por 'chars', intentamos resolverlo como un ID de personaje
+        if (primerElemento !== "chars") {
+            const rutaPersonaje = resolverRutaPersonaje(baseRoot, primerElemento);
+            if (rutaPersonaje) {
+                rutaDestino = [...rutaPersonaje, ...rutaDestino.slice(1)];
+            }
+        }
+        const targetContainer = getValueByPath(baseRoot, rutaDestino);
+        if (!targetContainer) {
+            logs.push(`<div class='log-entry' style='color:#ff6188;'>${paso} ⚠️ Destino inaccesible para crear: <code>${JSON.stringify(rutaDestino)}</code></div>`);
+            break;
+        }
                                 let freshData = JSON.parse(JSON.stringify(action.data));
 
-                                const decisionCreate = evaluarYRegistrarCambio(baseRoot, action.to, freshData, "aiActions(Create)", logs);
-                                if (!decisionCreate.aprobado) break;
-                                freshData = decisionCreate.value;
+                                const decisionCreate = evaluarYRegistrarCambio(baseRoot, rutaDestino, freshData, "aiActions(Create)", logs);
+        if (!decisionCreate.aprobado) break;
+        freshData = decisionCreate.value;
 
                                 // Preparamos la visualización del JSON que se va a inyectar
                                 const jsonEstructuraCreada = JSON.stringify(freshData, null, 4);
@@ -1005,7 +1058,8 @@
 
                         case "memory":
                             if (action.charId && Array.isArray(action.texts)) {
-                                const personaje = baseRoot.chars ? baseRoot.chars[action.charId] : null;
+                                const ruta = resolverRutaPersonaje(baseRoot, action.charId);
+                                const personaje = ruta ? getValueByPath(baseRoot, ruta) : null;
                                 const nombrePersonaje = personaje ? (personaje.nick || action.charId) : action.charId;
 
                                 if (personaje) {
@@ -1013,8 +1067,9 @@
                                         personaje.memories = [];
                                     }
 
-                                    // --- CAMBIO AQUÍ: Le avisamos al evaluador que es un "MemoryAdd" legítimo ---
-                                    const decisionMemory = evaluarYRegistrarCambio(baseRoot, ["chars", action.charId, "memories"], action.texts, "aiActions(MemoryAdd)", logs);
+                                    // --- CAMBIO: Ajustamos el path de validación para que coincida con la nueva estructura ---
+                                    const pathValidacion = [...ruta, "memories"];
+                                    const decisionMemory = evaluarYRegistrarCambio(baseRoot, pathValidacion, action.texts, "aiActions(MemoryAdd)", logs);
                                     if (!decisionMemory.aprobado) break;
 
                                     let bloquesRecuerdos = action.texts.map(txt => `<li>🧠 <em>"${escapeHtml(txt)}"</em></li>`).join("");
@@ -1253,27 +1308,35 @@
                 // Nos aseguramos de que bajo ninguna circunstancia se haya corrompido la plantilla
 
                 if (baseRootRef.aiActions) {
-                    baseRootRef.aiActions.why = "Brief narrative justification of the actions taken during the turn.";
+                    baseRootRef.aiActions.why = "Brief narrative justification.";
                     baseRootRef.aiActions.sequence = [
                         {
-                            "op": "string (edit | editObj | create | move | delete | memory | editRadar)",
-                            "targetId": "numeric (required for 'editObj', alternative for 'delete' or 'move' to target items directly by their idObj)",
-                            "updates": "object (required ONLY for 'editObj', e.g., {\"q\": 2, \"det\": \"Equipped\"})",
-                            "path": ["array", "of", "strings/numbers", "for", "generic", "target", "path"],
-                            "value": "any (required ONLY for generic 'edit' operation)",
-                            "to": ["array", "for", "destination", "path"],
-                            "key": "string (optional, dictionary key for 'create' operation)",
-                            "isObj": "boolean (optional, if true autogenerates incremental idObj)",
-                            "data": "object (required ONLY for 'create' operation)",
-                            "charId": "string (required ONLY for 'memory' operation)",
-                            "texts": ["array", "of", "strings", "for", "new", "memories"],
-                            "addChars": ["array", "of", "strings", "IDs", "of", "NPCs", "to", "spy"],
-                            "addWorld": ["array", "of", "strings", "IDs", "of", "subAreas", "to", "spy"],
-                            "removeChars": ["array", "of", "strings", "IDs", "to", "stop", "spying"],
-                            "removeWorld": ["array", "of", "strings", "IDs", "to", "stop", "spying"]
+                            "op": "string (edit|editObj|create|move|delete|memory|editRadar)",
+                    "targetId": "number (required for editObj/delete/move to target item unique numeric IDs)",
+                    "updates": "object (required for editObj, e.g., {\"q\":2})",
+                    "path": ["array of strings/numbers for generic target path"],
+                    "value": "any (required for generic edit)",
+                    "to": ["destination path"],
+                    "key": "string (optional key for create)",
+                    "isObj": "boolean (optional, autogenerates idObj for items)",
+                    "data": "object (required for create)",
+                    "charId": "string (required for memory operation)",
+                    "texts": ["string"],
+                    "addChars": [
+                        "array of character IDs to spy"
+                    ],
+                    "addWorld": [
+                        "array of subArea IDs to spy"
+                    ],
+                    "removeChars": [
+                        "array of character IDs to stop spying"
+                    ],
+                    "removeWorld": [
+                        "array of subArea IDs to stop spying"
+                    ]
                         }
                     ];
-                    baseRootRef.aiActions.note_sequence = "CRITICAL: Use 'targetId' and 'editObj' instead of item array indexes in 'path' to avoid index shift bugs when deleting or modifying items.";
+                    baseRootRef.aiActions.note_sequence = "Start 'path' directly with Character ID, omitting roots (e.g. ['P1','hp',0]). Use 'targetId'+'editObj' for items to avoid array index shift bugs.";
                 }
 
                 document.getElementById('resultado').textContent = JSON.stringify(baseObj, null, 4);
@@ -1459,6 +1522,19 @@
             }
             return false;
         }
+
+function resolverRutaPersonaje(baseRoot, charId) {
+    const dynamicData = getDynamicRoot(baseRoot);
+    if (!dynamicData.chars) return null;
+
+    const grupos = ['players', 'npcs', 'templates'];
+    for (const grupo of grupos) {
+        if (dynamicData.chars[grupo] && dynamicData.chars[grupo][charId]) {
+            return ['chars', grupo, charId];
+        }
+    }
+    return null;
+}
     </script>
 </body>
 

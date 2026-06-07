@@ -54,7 +54,7 @@
             "turnActionPlayer_id": "P1",
             "gameLang": "ES",
             "currDiff": "Easy",
-            "lastGeneratedObjId": 8,
+            "lastGeneratedObjId": 11,
             "minutos_transcurridos_turno": null,
             "reusableObjIds": [],
             "time": {
@@ -76,422 +76,377 @@
             "worldStorage": []
         },
         "aiActions": {
-            "why": "Brief narrative justification of the actions taken during the turn.",
+            "why": "Brief narrative justification.",
             "sequence": [
                 {
-                    "op": "string (edit | editObj | create | move | delete | memory | editRadar)",
-                    "targetId": "numeric (required for 'editObj', alternative for 'delete' or 'move' to target items directly by their idObj)",
-                    "updates": "object (required ONLY for 'editObj', e.g., {\"q\": 2, \"det\": \"Equipped\"})",
-                    "path": [
-                        "array",
-                        "of",
-                        "strings/numbers",
-                        "for",
-                        "generic",
-                        "target",
-                        "path"
-                    ],
-                    "value": "any (required ONLY for generic 'edit' operation)",
-                    "to": [
-                        "array",
-                        "for",
-                        "destination",
-                        "path"
-                    ],
-                    "key": "string (optional, dictionary key for 'create' operation)",
-                    "isObj": "boolean (optional, if true autogenerates incremental idObj)",
-                    "data": "object (required ONLY for 'create' operation)",
-                    "charId": "string (required ONLY for 'memory' operation)",
-                    "texts": [
-                        "array",
-                        "of",
-                        "strings",
-                        "for",
-                        "new",
-                        "memories"
-                    ],
+                    "op": "string (edit|editObj|create|move|delete|memory|editRadar)",
+                    "targetId": "number (required for editObj/delete/move to target item unique numeric IDs)",
+                    "updates": "object (required for editObj, e.g., {\"q\":2})",
+                    "path": ["array of strings/numbers for generic target path"],
+                    "value": "any (required for generic edit)",
+                    "to": ["destination path"],
+                    "key": "string (optional key for create)",
+                    "isObj": "boolean (optional, autogenerates idObj for items)",
+                    "data": "object (required for create)",
+                    "charId": "string (required for memory operation)",
+                    "texts": ["string"],
                     "addChars": [
-                        "array",
-                        "of",
-                        "strings",
-                        "IDs",
-                        "of",
-                        "NPCs",
-                        "to",
-                        "spy"
+                        "array of character IDs to spy"
                     ],
                     "addWorld": [
-                        "array",
-                        "of",
-                        "strings",
-                        "IDs",
-                        "of",
-                        "subAreas",
-                        "to",
-                        "spy"
+                        "array of subArea IDs to spy"
                     ],
                     "removeChars": [
-                        "array",
-                        "of",
-                        "strings",
-                        "IDs",
-                        "to",
-                        "stop",
-                        "spying"
+                        "array of character IDs to stop spying"
                     ],
                     "removeWorld": [
-                        "array",
-                        "of",
-                        "strings",
-                        "IDs",
-                        "to",
-                        "stop",
-                        "spying"
+                        "array of subArea IDs to stop spying"
                     ]
                 }
             ],
-            "note_sequence": "CRITICAL: Use 'targetId' and 'editObj' instead of item array indexes in 'path' to avoid index shift bugs when deleting or modifying items."
+            "note_sequence": "Start 'path' directly with Character ID, omitting roots (e.g. ['P1','hp',0]). Use 'targetId'+'editObj' for items to avoid array index shift bugs."
         },
         "chars": {
-            "id_tplMANDATORY": {
-                "ai_note": "Do not delete this tpl. Use this exact structure for every new NPC or player, adapting numerical values to context.",
-                "nick": "string",
-                "age": "numeric",
-                "isPlayer": "boolean",
-                "fem": "b",
-                "omnipotent": "b, d false",
-                "currentSubArea_id": "s",
-                "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h) REGULAR EXPRESSION / LOGIC: 'magicForestToxin_h' tracks vulnerability to spores. If this key DOES NOT EXIST in a character, they are permanently IMMUNE to the Magic Forest spores. Only add this key with a numeric value (starting at 0.00) for chars such as new or vulnerable outsider humans.",
-                "state": "s",
-                "food": [
-                    "d (current)",
-                    "d (max), human d 500"
-                ],
-                "water": [
-                    "d",
-                    "d, hd 100"
-                ],
-                "sleep": [
-                    "d",
-                    "d, hd 200"
-                ],
-                "hp": [
-                    "d",
-                    "d"
-                ],
-                "energy": [
-                    "d",
-                    "d (100 = average outsider human)"
-                ],
-                "magDmg": [
-                    "d",
-                    "d"
-                ],
-                "magDef": [
-                    "d",
-                    "d"
-                ],
-                "flySpd": [
-                    "d",
-                    "d"
-                ],
-                "physDmg": [
-                    "d",
-                    "d"
-                ],
-                "physDef": [
-                    "d",
-                    "d"
-                ],
-                "runSpd": [
-                    "d",
-                    "d"
-                ],
-                "refl": [
-                    "d",
-                    "d"
-                ],
-                "activeEffects": [
-                    {
-                        "key": "val (e.g { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'}, {'n': 'another random effect (etc keys and vals)'})"
-                    }
-                ],
-                "skills": [
-                    "s (e.g fantasy seal, sword)"
-                ],
-                "memories": [
-                    "s (e.g left my Backpack at Marisa's house -> create that subArea in area magic forest if it doesn't exist, same with new Areas)"
-                ],
-                "appearance": {
-                    "height_m": "d e.g 1.75",
-                    "hair": {
-                        "color": "s e.g Blanco",
-                        "style": "s e.g Largo con una trenza lateral"
-                    },
-                    "eyes": "s e.g Rojo carmesí",
-                    "distinguishing_features": [
-                        "s e.g Orejas de conejo",
-                        "s (infinite string values in Array) e.g Una pequeña cicatriz en la mejilla izquierda"
+            "templates": {
+                "id_tplMANDATORY": {
+                    "ai_note": "Do not delete this tpl. Use this exact structure for every new NPC or player, adapting numerical values to context.",
+                    "nick": "string",
+                    "age": "numeric",
+                    "fem": "b",
+                    "omnipotent": "b, d false",
+                    "currentSubArea_id": "s",
+                    "magicForestToxin_h": "decimal (hours.minutes format, 60min = 1h) REGULAR EXPRESSION / LOGIC: 'magicForestToxin_h' tracks vulnerability to spores. If this key DOES NOT EXIST in a character, they are permanently IMMUNE to the Magic Forest spores. Only add this key with a numeric value (starting at 0.00) for chars such as new or vulnerable outsider humans.",
+                    "state": "s",
+                    "food": [
+                        "d (current)",
+                        "d (max), human d 500"
                     ],
-                    "base_description": "s e.g Un humanoide de aspecto joven que viste ropas desgastadas por el viaje."
-                },
-                "inv": [
-                    "o, def clothes worn. If items available (e.g. Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
-                    "items like Backpack if not carried, use worldStorage with Same subArea with this char and leave the backback's info there until is carried again, etc",
-                    {
-                        "weight_penalization": "food, energy, spd (Try low penalization)"
-                    }
-                ],
-                "detectedCharsNearbyList": [
-                    {
-                        "nearby_pj_id": "s",
-                        "recognized": "b"
-                    }
-                ],
-                "extra": [
-                    {
-                        "Key": "Val (other important details)"
-                    }
-                ],
-                "tplReimuDefault": {
-                    "idReimu": {
-                        "nick": "Reimu Hakurei",
-                        "age": 18,
-                        "isPlayer": false,
-                        "fem": true,
-                        "omnipotent": false,
-                        "currentSubArea_id": null,
-                        "magicForestToxin_h": 16,
-                        "state": null,
-                        "food": [
-                            null,
-                            500
-                        ],
-                        "water": [
-                            null,
-                            100
-                        ],
-                        "sleep": [
-                            null,
-                            200
-                        ],
-                        "hp": [
-                            null,
-                            1500
-                        ],
-                        "energy": [
-                            null,
-                            250
-                        ],
-                        "magDmg": [
-                            null,
-                            2000
-                        ],
-                        "magDef": [
-                            null,
-                            1500
-                        ],
-                        "flySpd": [
-                            null,
-                            4500
-                        ],
-                        "physDmg": [
-                            null,
-                            100
-                        ],
-                        "physDef": [
-                            null,
-                            400
-                        ],
-                        "runSpd": [
-                            null,
-                            60
-                        ],
-                        "refl": [
-                            null,
-                            4000
-                        ],
-                        "activeEffects": [
-                            {}
-                        ],
-                        "skills": [
-                            "Volar, Spells, Armas",
-                            ""
-                        ],
-                        "memories": [
-                            "Conoce a casi todos, a los nuevos humanos perdidos no']"
-                        ],
-                        "appearance": {
-                            "height_m": 1.58,
-                            "hair": {
-                                "color": "Marrón oscuro",
-                                "style": "Largo, recogido en una gran coleta trasera con un lazo rojo llamativo y mechones que enmarcan su rostro"
-                            },
-                            "eyes": "Marrón teñido de rojo purpúreo",
-                            "distinguishing_features": [
-                                "Patillas largas sujetas con tubos para el cabello (decoraciones de miko)",
-                                "Expresión habitualmente serena o ligeramente apática"
-                            ],
-                            "base_description": "Una joven de complexión delgada y movimientos sumamente fluidos, casi como si flotara al caminar. Viste ropas tradicionales de miko modificadas."
+                    "water": [
+                        "d",
+                        "d, hd 100"
+                    ],
+                    "sleep": [
+                        "d",
+                        "d, hd 200"
+                    ],
+                    "hp": [
+                        "d",
+                        "d"
+                    ],
+                    "energy": [
+                        "d",
+                        "d (100 = average outsider human)"
+                    ],
+                    "magDmg": [
+                        "d",
+                        "d"
+                    ],
+                    "magDef": [
+                        "d",
+                        "d"
+                    ],
+                    "flySpd": [
+                        "d",
+                        "d"
+                    ],
+                    "physDmg": [
+                        "d",
+                        "d"
+                    ],
+                    "physDef": [
+                        "d",
+                        "d"
+                    ],
+                    "runSpd": [
+                        "d",
+                        "d"
+                    ],
+                    "refl": [
+                        "d",
+                        "d"
+                    ],
+                    "activeEffects": [
+                        {
+                            "key": "val (e.g { 'n': 'Paracetamol', 'delay_to_start': '0:45','h_remaining': '4:00', 'benefit': 'Toxins'}, {'n': 'another random effect (etc keys and vals)'})"
+                        }
+                    ],
+                    "skills": [
+                        "s (e.g fantasy seal, sword)"
+                    ],
+                    "memories": [
+                        "s (e.g left my Backpack at Marisa's house -> create that subArea in area magic forest if it doesn't exist, same with new Areas)"
+                    ],
+                    "appearance": {
+                        "height_m": "d e.g 1.75",
+                        "hair": {
+                            "color": "s e.g Blanco",
+                            "style": "s e.g Largo con una trenza lateral"
                         },
-                        "inv": [
-                            {
-                                "idObj": "null (Next obj ID available)",
-                                "n": "Hakurei Shrine Maiden (miko) outfit, customized and distinctive, predominantly red and white",
-                                "det": "Equipado"
-                            },
-                            {
-                                "idObj": "null (Next obj ID available)",
-                                "n": "Gohei"
-                            },
-                            {
-                                "idObj": "null (Next obj ID available)",
-                                "n": "Yin-Yang Orb"
-                            },
-                            {
-                                "idObj": "null (Next obj ID available)",
-                                "n": "Ofuda",
-                                "q": 5
-                            }
+                        "eyes": "s e.g Rojo carmesí",
+                        "distinguishing_features": [
+                            "s e.g Orejas de conejo",
+                            "s (infinite string values in Array) e.g Una pequeña cicatriz en la mejilla izquierda"
                         ],
-                        "detectedCharsNearbyList": [
-                            {
-                                "nearby_pj_id": null,
-                                "recognized": false
-                            }
-                        ],
-                        "extra": [
-                            {}
-                        ]
-                    }
+                        "base_description": "s e.g Un humanoide de aspecto joven que viste ropas desgastadas por el viaje."
+                    },
+                    "inv": [
+                        "o, def clothes worn. If items available (e.g. Backpack, items inside). Do not remove info except stolen items! (Do not replace content with '...')",
+                        "items like Backpack if not carried, use worldStorage with Same subArea with this char and leave the backback's info there until is carried again, etc",
+                        {
+                            "weight_penalization": "food, energy, spd (Try low penalization)"
+                        }
+                    ],
+                    "detectedCharsNearbyList": [
+                        {
+                            "nearby_pj_id": "s",
+                            "recognized": "b"
+                        }
+                    ],
+                    "extra": [
+                        {
+                            "Key": "Val (other important details)"
+                        }
+                    ]
                 }
             },
-            "P1": {
-                "nick": "Pepito",
-                "age": 18,
-                "isPlayer": true,
-                "fem": false,
-                "omnipotent": false,
-                "currentSubArea_id": "MarisaKitchen",
-                "magicForestToxin_h": 0,
-                "state": "Normal",
-                "food": [
-                    500,
-                    500
-                ],
-                "water": [
-                    100,
-                    100
-                ],
-                "sleep": [
-                    200,
-                    200
-                ],
-                "hp": [
-                    3000,
-                    3000
-                ],
-                "energy": [
-                    500,
-                    500
-                ],
-                "magDmg": [
-                    3000,
-                    3000
-                ],
-                "magDef": [
-                    2500,
-                    2500
-                ],
-                "flySpd": [
-                    5000,
-                    5000
-                ],
-                "physDmg": [
-                    750,
-                    750
-                ],
-                "physDef": [
-                    1350,
-                    1350
-                ],
-                "runSpd": [
-                    375,
-                    375
-                ],
-                "refl": [
-                    5000,
-                    5000
-                ],
-                "skills": [
-                    "Esfera mágica básica",
-                    "Volar",
-                    "Master Spark",
-                    "Comunicacion mental (mensaje + respuesta) 20m max",
-                    ""
-                ],
-                "memories": [
-                    "Recuerdo un destello blanco antes de despertar aquí.",
-                    "Este bosque en donde desperté se siente hostil.",
-                    "Siento que tengo habilidades mágicas, pero no sé quién más habita este bosque."
-                ],
-                "appearance": {
-                    "height_m": 1.75,
-                    "hair": {
-                        "color": "Castaño",
-                        "style": "Corto y ligeramente alborotado"
-                    },
-                    "eyes": "Comunes",
-                    "distinguishing_features": [
-                        "Aspecto y vestimenta que desentonan completamente con la estética tradicional de Gensokyo",
-                        "Mirada de desconcierto o alerta constante ante el entorno"
+            "players": {
+                "P1": {
+                    "nick": "Pepito",
+                    "age": 18,
+                    "fem": false,
+                    "omnipotent": false,
+                    "currentSubArea_id": "MarisaKitchen",
+                    "magicForestToxin_h": 0,
+                    "state": "Normal",
+                    "food": [
+                        500,
+                        500
                     ],
-                    "base_description": "Un joven humano de complexión y altura promedio para el Mundo Exterior, vistiendo ropa casual moderna apta para el día a día."
-                },
-                "inv": [
-                    {
-                        "idObj": 0,
-                        "n": "Ropa exterior",
-                        "det": "Equipado"
+                    "water": [
+                        100,
+                        100
+                    ],
+                    "sleep": [
+                        200,
+                        200
+                    ],
+                    "hp": [
+                        3000,
+                        3000
+                    ],
+                    "energy": [
+                        500,
+                        500
+                    ],
+                    "magDmg": [
+                        3000,
+                        3000
+                    ],
+                    "magDef": [
+                        2500,
+                        2500
+                    ],
+                    "flySpd": [
+                        5000,
+                        5000
+                    ],
+                    "physDmg": [
+                        750,
+                        750
+                    ],
+                    "physDef": [
+                        1350,
+                        1350
+                    ],
+                    "runSpd": [
+                        375,
+                        375
+                    ],
+                    "refl": [
+                        5000,
+                        5000
+                    ],
+                    "skills": [
+                        "Esfera mágica básica",
+                        "Volar",
+                        "Master Spark",
+                        "Comunicacion mental (mensaje + respuesta) 20m max",
+                        ""
+                    ],
+                    "memories": [
+                        "Recuerdo un destello blanco antes de despertar aquí.",
+                        "Este bosque en donde desperté se siente hostil.",
+                        "Siento que tengo habilidades mágicas, pero no sé quién más habita este bosque."
+                    ],
+                    "appearance": {
+                        "height_m": 1.75,
+                        "hair": {
+                            "color": "Castaño",
+                            "style": "Corto y ligeramente alborotado"
+                        },
+                        "eyes": "Comunes",
+                        "distinguishing_features": [
+                            "Aspecto y vestimenta que desentonan completamente con la estética tradicional de Gensokyo",
+                            "Mirada de desconcierto o alerta constante ante el entorno"
+                        ],
+                        "base_description": "Un joven humano de complexión y altura promedio para el Mundo Exterior, vistiendo ropa casual moderna apta para el día a día."
                     },
-                    {
-                        "idObj": 1,
-                        "n": "Mochila",
-                        "carried": true,
-                        "items": [
-                            {
-                                "idObj": 2,
-                                "n": "Manta térmica",
-                                "q": 1
-                            },
-                            {
-                                "idObj": 3,
-                                "n": "Linterna",
-                                "q": 1
-                            },
-                            {
-                                "idObj": 4,
-                                "n": "Agua",
-                                "q": 3
-                            },
-                            {
-                                "idObj": 5,
-                                "n": "Chocolate",
-                                "q": 5
-                            },
-                            {
-                                "idObj": 6,
-                                "n": "Paracetamol",
-                                "q": 8
-                            },
-                            {
-                                "idObj": 7,
-                                "n": "Dinero",
-                                "q": 100
-                            }
-                        ]
-                    }
-                ]
+                    "inv": [
+                        {
+                            "idObj": 0,
+                            "n": "Ropa exterior",
+                            "det": "Equipado"
+                        },
+                        {
+                            "idObj": 1,
+                            "n": "Mochila",
+                            "carried": true,
+                            "items": [
+                                {
+                                    "idObj": 2,
+                                    "n": "Manta térmica",
+                                    "q": 1
+                                },
+                                {
+                                    "idObj": 3,
+                                    "n": "Linterna",
+                                    "q": 1
+                                },
+                                {
+                                    "idObj": 4,
+                                    "n": "Agua",
+                                    "q": 3
+                                },
+                                {
+                                    "idObj": 5,
+                                    "n": "Chocolate",
+                                    "q": 5
+                                },
+                                {
+                                    "idObj": 6,
+                                    "n": "Paracetamol",
+                                    "q": 8
+                                },
+                                {
+                                    "idObj": 7,
+                                    "n": "Dinero",
+                                    "q": 100
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "npcs": {
+                "Reimu": {
+                    "nick": "Reimu Hakurei",
+                    "age": 18,
+                    "fem": true,
+                    "omnipotent": false,
+                    "currentSubArea_id": null,
+                    "magicForestToxin_h": 16,
+                    "state": null,
+                    "food": [
+                        null,
+                        500
+                    ],
+                    "water": [
+                        null,
+                        100
+                    ],
+                    "sleep": [
+                        null,
+                        200
+                    ],
+                    "hp": [
+                        null,
+                        1500
+                    ],
+                    "energy": [
+                        null,
+                        250
+                    ],
+                    "magDmg": [
+                        null,
+                        2000
+                    ],
+                    "magDef": [
+                        null,
+                        1500
+                    ],
+                    "flySpd": [
+                        null,
+                        4500
+                    ],
+                    "physDmg": [
+                        null,
+                        100
+                    ],
+                    "physDef": [
+                        null,
+                        400
+                    ],
+                    "runSpd": [
+                        null,
+                        60
+                    ],
+                    "refl": [
+                        null,
+                        4000
+                    ],
+                    "activeEffects": [
+                        {}
+                    ],
+                    "skills": [
+                        "Volar, Spells, Armas",
+                        ""
+                    ],
+                    "memories": [
+                        "Conoce a casi todos, a los nuevos humanos perdidos no']"
+                    ],
+                    "appearance": {
+                        "height_m": 1.58,
+                        "hair": {
+                            "color": "Marrón oscuro",
+                            "style": "Largo, recogido en una gran coleta trasera con un lazo rojo llamativo y mechones que enmarcan su rostro"
+                        },
+                        "eyes": "Marrón teñido de rojo purpúreo",
+                        "distinguishing_features": [
+                            "Patillas largas sujetas con tubos para el cabello (decoraciones de miko)",
+                            "Expresión habitualmente serena o ligeramente apática"
+                        ],
+                        "base_description": "Una joven de complexión delgada y movimientos sumamente fluidos, casi como si flotara al caminar. Viste ropas tradicionales de miko modificadas."
+                    },
+                    "inv": [
+                        {
+                            "idObj": 8,
+                            "n": "Hakurei Shrine Maiden (miko) outfit, customized and distinctive, predominantly red and white",
+                            "det": "Equipado"
+                        },
+                        {
+                            "idObj": 9,
+                            "n": "Gohei"
+                        },
+                        {
+                            "idObj": 10,
+                            "n": "Yin-Yang Orb"
+                        },
+                        {
+                            "idObj": 11,
+                            "n": "Ofuda",
+                            "q": 5
+                        }
+                    ],
+                    "detectedCharsNearbyList": [
+                        {
+                            "nearby_pj_id": null,
+                            "recognized": false
+                        }
+                    ],
+                    "extra": [
+                        {}
+                    ]
+                }
             }
         },
         "worldStorage": {
@@ -499,7 +454,9 @@
                 "name": "Contenedor Global del Limbo",
                 "desc": "Espacio seguro del sistema para objetos huérfanos o desterrados.",
                 "subAreas": {
-                    "Contenedor_Global": []
+                    "Contenedor_Global": {
+                        "items": []
+                    }
                 }
             },
             "MagicForest": {
@@ -540,13 +497,7 @@
                     "MFTreeZone1": {
                         "name": "Dense Trees 1",
                         "desc": "Deep forest section. Thick canopy blocks most sunlight.",
-                        "items": [
-                            {
-                                "idObj": 8,
-                                "n": "Objeto temporal para pruebas (se eliminará pronto)",
-                                "q": 500
-                            }
-                        ]
+                        "items": []
                     },
                     "MarisaHouse": {
                         "name": "Marisa House",

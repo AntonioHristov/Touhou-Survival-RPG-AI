@@ -169,11 +169,12 @@
             <input type="file" id="jsonInput" accept=".json">
             <div id="charPickerContainer" style="display:none; margin-top: 20px;">
                 <label>Seleccionar Personaje: </label>
-                <select id="charSelect" onchange="updateUI()"></select>
+                <select id="charSelect" onchange="selectedId = this.value; updateUI();" class="nav-btn"></select>
                 <button class="nav-btn" onclick="selectActivePlayer()"
                     style="background: var(--accent); margin-left: 10px; padding: 5px 10px; font-size: 0.8em;">
                     🎯 Ir al turno actual
                 </button>
+                <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Exportar JSON</button>
             </div>
         </div>
         <div id="sec-all" class="section active">
@@ -218,22 +219,70 @@
             };
             reader.readAsText(e.target.files[0]);
         });
-        function initGame() {
-            document.getElementById('charSelect').innerHTML = '';
-            Object.keys(gameData.dynamicData.chars).forEach(id => {
-                if (id !== 'id_tplMANDATORY') {
-                    let opt = document.createElement('option');
-                    opt.value = id;
-                    opt.textContent = id;
-                    if (id === gameData.dynamicData.worldState.turnActionPlayer_id) {
-                        opt.selected = true;
+        function initGame(idToKeep = null) {
+            const selector = document.getElementById('charSelect');
+            
+            // 🌟 1. Averiguamos qué ID mantener antes de vaciar nada
+            // Prioridad: 1° El parámetro forzado, 2° Lo que esté puesto en el select, 3° El jugador del turno
+            const idActual = idToKeep || (selector ? selector.value : null) || gameData.dynamicData.worldState.turnActionPlayer_id;
+
+            if (selector) {
+                selector.innerHTML = '';
+            }
+            
+            const charsNode = gameData.dynamicData.chars;
+            
+            const agregarOpcionesDesdeGrupo = (grupoObjetos, etiquetaGrupo) => {
+                if (!grupoObjetos || typeof grupoObjetos !== 'object') return;
+                
+                Object.keys(grupoObjetos).forEach(id => {
+                    if (id !== 'id_tplMANDATORY') {
+                        let opt = document.createElement('option');
+                        opt.value = id;
+                        
+                        const nickName = grupoObjetos[id].nick ? ` (${grupoObjetos[id].nick})` : '';
+                        opt.textContent = `[${etiquetaGrupo}] ${id}${nickName}`;
+                        
+                        // Si coincide con el ID actual que queremos preservar, lo marcamos
+                        if (id === idActual) {
+                            opt.selected = true;
+                        }
+                        if (selector) selector.appendChild(opt);
                     }
-                    document.getElementById('charSelect').appendChild(opt);
-                }
-            });
-            document.getElementById('charPickerContainer').style.display = 'block';
-            document.getElementById('mainNav').style.display = 'flex';
+                });
+            };
+
+            if (charsNode.players || charsNode.npcs) {
+                agregarOpcionesDesdeGrupo(charsNode.players, "PJ");
+                agregarOpcionesDesdeGrupo(charsNode.npcs, "NPC");
+            } else {
+                agregarOpcionesDesdeGrupo(charsNode, "CHAR");
+            }
+
+            // 🌟 2. Sincronizamos de forma estricta las variables globales con el ID preservado
+            if (selector) {
+                selector.value = idActual;
+            }
+            selectedId = idActual; // Forzamos la variable global antes de hacer updateUI()
+
+            if (document.getElementById('charPickerContainer')) {
+                document.getElementById('charPickerContainer').style.display = 'block';
+            }
+            if (document.getElementById('mainNav')) {
+                document.getElementById('mainNav').style.display = 'flex';
+            }
+            
             updateUI();
+        }
+        // Función de utilidad global para extraer los datos de un personaje sin importar su rol
+        function buscarObjetoPersonajePorId(id) {
+            if (!gameData || !gameData.dynamicData || !gameData.dynamicData.chars) return null;
+            const charsNode = gameData.dynamicData.chars;
+            
+            if (charsNode[id]) return charsNode[id]; // Estructura plana
+            if (charsNode.players && charsNode.players[id]) return charsNode.players[id]; // Jugador
+            if (charsNode.npcs && charsNode.npcs[id]) return charsNode.npcs[id]; // NPC
+            return null;
         }
         function showSection(sectionId) {
             document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
@@ -249,12 +298,13 @@
         function updateUI() {
             if (!gameData) return;
             const selectedId = document.getElementById('charSelect').value;
-            const areaData = gameData.dynamicData.worldStorage[gameData.dynamicData.chars[selectedId].currentArea_id] || {};
+            let pj = buscarObjetoPersonajePorId(selectedId);
+            const areaData = gameData.dynamicData.worldStorage[pj.currentArea_id] || {};
             document.getElementById('statsContent').innerHTML = UIComponents.stats(selectedId);
             //document.getElementById('invContent').innerHTML = UIComponents.inventory(gameData.dynamicData.chars[selectedId], (areaData.miniAreas && areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id]) ? areaData.miniAreas[gameData.dynamicData.chars[selectedId].currentMiniArea_id] : []);
-            document.getElementById('invContent').innerHTML = UIComponents.inventory(gameData.dynamicData.chars[selectedId]);
+            document.getElementById('invContent').innerHTML = UIComponents.inventory(pj);
             document.getElementById('worldContent').innerHTML = UIComponents.world(gameData.dynamicData);
-            document.getElementById('extraContent').innerHTML = UIComponents.extra(gameData.dynamicData.chars[selectedId]);
+            document.getElementById('extraContent').innerHTML = UIComponents.extra(pj);
             document.getElementById('sec-prompt').querySelector('.data-box').innerHTML = UIComponents.prompt(selectedId, gameData.dynamicData);
             document.getElementById('allContent').innerHTML = UIComponents.all(document.getElementById('statsContent').innerHTML, document.getElementById('invContent').innerHTML, document.getElementById('extraContent').innerHTML, document.getElementById('worldContent').innerHTML, document.getElementById('sec-prompt').querySelector('.data-box').innerHTML)
         }
@@ -317,23 +367,23 @@
     if (currentIdObj !== undefined) {
         if (dato.inLimbo === true) {
             // El contenedor raíz en el limbo muestra su botón para recuperar
-            buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recuperar" onclick="toggleLimboReferencia(${idObjAlmacen})">🔄 Recuperar</button> `;
+            buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recuperar" onclick="toggleLimbo(${idObjAlmacen})">🔄 Recuperar</button> `;
         } else if (padreEnLimbo === true) {
             // SI EL PADRE ESTÁ EN EL LIMBO: Ocultamos In, Out y Limbo para los hijos (evita duplicaciones raras)
         } else {
             // EN EL MUNDO REAL: Comportamiento íntegro normal
             if (!esInventario) {
-                buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recoger" onclick="recogerObjetoReferencia(${idObjAlmacen})">📥 Recoger</button> `;
+                buttonsHtml += `<button class="btn-sm" style="background:#2ecc71" title="Recoger" onclick="recogerObjeto(${idObjAlmacen})">📥 Recoger</button> `;
             } else if (esInventario && idPadre === null) {
-                buttonsHtml += `<button class="btn-sm" style="background:#e74c3c" title="Soltar" onclick="soltarObjetoReferencia(${idObjAlmacen})">📤 Soltar</button> `;
+                buttonsHtml += `<button class="btn-sm" style="background:#e74c3c" title="Soltar" onclick="soltarObjeto(${idObjAlmacen})">📤 Soltar</button> `;
             }
-            buttonsHtml += `<button class="btn-sm" style="background:#3498db" onclick="abrirSelectorContenedoresReferencia(${idObjAlmacen})">📦 In</button> `;
+            buttonsHtml += `<button class="btn-sm" style="background:#3498db" onclick="abrirSelectorContenedores(${idObjAlmacen})">📦 In</button> `;
             if (idPadre !== null) {
                 buttonsHtml += `<button class="btn-sm" style="background:#e67e22" title="Sacar al exterior" onclick="moveFromContainer(${currentIdObj}, ${idPadre})">📦 Out</button>`;
             }
             
             const padreIdCalculado = (idPadre === null && esInventario) ? document.getElementById('charSelect').value : idPadre;
-            buttonsHtml += `<button class="btn-sm" style="background:#9b59b6" onclick="toggleLimboReferencia(${idObjAlmacen}, ${padreIdCalculado !== null ? `'${padreIdCalculado}'` : 'null'})">🌌 Limbo</button>`;
+            buttonsHtml += `<button class="btn-sm" style="background:#9b59b6" onclick="toggleLimbo(${idObjAlmacen}, ${padreIdCalculado !== null ? `'${padreIdCalculado}'` : 'null'})">🌌 Limbo</button>`;
         }
     }
 
@@ -370,12 +420,6 @@
 
         if (k === 'items' || k === 'content' || k === 'inv' || (Array.isArray(v) && k !== 'detectedCharsNearbyList')) {
             const contenedorActualID = dato.idObj || idPadre;
-            
-            // Ocultamos el botón '+ Añadir' si el contenedor está en el limbo
-            const botonAnadirHtml = estaEnLimboEfectivo
-                ? '' 
-                : `<button class="btn-sm" style="background:#27ae60; padding:2px 6px; font-size:0.75em;" 
-                           onclick="crearObjetoEnReferencia(${idObjAlmacen}, '${k}')">+ Añadir</button>`;
 
             atributos += `
                 <div class="inventory-box" style="margin-top:5px; border-left: 2px dashed #555; padding-left: 5px;">
@@ -389,7 +433,6 @@
                             <button class="btn-sm" style="background:transparent; color:#555; font-size:0.7em; padding:0 3px;" 
                                     onclick="eliminarAtributoReferencia(${idObjAlmacen}, '${k}')">x</button>
                         </div>
-                        ${botonAnadirHtml}
                     </div>
                     ${detallar(v, true, contenedorActualID, v, -1, `${pathJsonContenedor}.${k}`, estaEnLimboEfectivo)}
                 </div>`;
@@ -430,8 +473,9 @@
             const blob = new Blob([JSON.stringify(gameData, null, 4)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
+            const idTurno=String(gameData.dynamicData.worldState.turnActionPlayer_id);
             link.href = url;
-            link.download = `EIndex_${String(gameData.dynamicData.worldState.turnActionPlayer_id)}_${gameData.dynamicData.chars[gameData.dynamicData.worldState.turnActionPlayer_id].currentArea_id || "Gensokyo"}_D${gameData.dynamicData.worldState.time.day}_H${gameData.dynamicData.worldState.time.h.replace(':', 'M')}.json`;
+            link.download = `EIndex_${idTurno}_${buscarObjetoPersonajePorId(idTurno)?buscarObjetoPersonajePorId(idTurno).currentSubArea_id || "Gensokyo":"Gensokyo"}_D${gameData.dynamicData.worldState.time.day}_H${gameData.dynamicData.worldState.time.h.replace(':', 'M')}.json`;
             link.click();
             URL.revokeObjectURL(url);
         }
@@ -439,10 +483,6 @@
             const engineRules = context.engineRules;
             const filteredData = context.dynamicData;
             const action = context.action;
-            
-            // =========================================================================
-            // 🤖 INSTRUCCIONES ACTUALIZADAS DE LA IA (MOTOR DE JUEGO ACTUALIZADO 2026)
-            // =========================================================================
             const instructions = `1. Actúa como Master atmosférico. Lenguaje inmersivo pero sencillo. Genera exactamente 3 opciones de acción sugeridas según el contexto físico y narrativo.
 2. Si un valor es 'null' (ej. weather), defínelo coherentemente según el contexto de la zona.
 3. Actualiza 'turnActionPlayer_id' secuencialmente tras cada acción. Aplica 'worldMechanics' (decay horario, etc.) únicamente cuando actúe el último jugador de la ronda.
@@ -522,7 +562,23 @@ LÓGICA DE MUNDO Y GEOGRAFÍA:
 
         function getHtmlGeneratedPrompt(dynamicData, selectedId) {
             const filteredData = JSON.parse(JSON.stringify(dynamicData));
-            const pj = filteredData.chars[selectedId];
+            const charsNode = filteredData.chars;
+            let pj = null;
+            let esJugadorSeleccionado = false;
+
+            if (charsNode.players && charsNode.players[selectedId]) {
+                pj = charsNode.players[selectedId];
+                esJugadorSeleccionado = true;
+            } else if (charsNode.npcs && charsNode.npcs[selectedId]) {
+                pj = charsNode.npcs[selectedId];
+            } else if (charsNode[selectedId]) { // Fallback estructural plano
+                pj = charsNode[selectedId];
+                esJugadorSeleccionado = pj.isPlayer;
+            }
+
+            if (!pj) {
+                return `<div class="data-box" style="border-left-color:red;">❌ Error: No se encontraron datos para el ID seleccionado (${selectedId}).</div>`;
+            }
 
             const playerSubAreaTarget = (pj.currentSubArea_id || "").trim();
 
@@ -702,192 +758,115 @@ const estaEspiandoChars = extraCharIds.length > 0;
         <button class="nav-btn" style="background: #555;" onclick="resetOption()">Cambiar Acción</button>
         <button class="nav-btn" style="background:#27ae60;" onclick="exportJSON()">💾 Guardar Progreso (JSON)</button>`;
         }
+        function moveFromContainer(idObjHijo, idObjPadre) {
+    // 1. Buscamos y validamos al personaje activo seleccionado en la interfaz
+    const idActual = document.getElementById('charSelect').value;
+    const pj = buscarObjetoPersonajePorId(idActual);
+    if (!pj) return;
 
-        function toggleLimboReferencia(idObjAlmacen, idPadreUI = null) {
-            // 1. Recuperamos el objeto real desde el almacén de memoria temporal
-            const objetoTarget = window.objetosInventarioTemp[idObjAlmacen];
-            if (!objetoTarget) {
-                alert("❌ Error: No se pudo localizar el objeto en la memoria actual.");
-                return;
-            }
+    // Convertimos a string por seguridad en las comparaciones
+    const targetHijoId = String(idObjHijo);
+    const targetPadreId = String(idObjPadre);
 
-            const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
-            if (!pj) return;
+    let objetoHijoExtraido = null;
+    let contenedorPadreEncontrado = null;
 
-            // 2. Aseguramos y estructuramos el nodo jerárquico del Limbo
-            if (!gameData.dynamicData.worldStorage) gameData.dynamicData.worldStorage = {};
-            if (!gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND) {
-                gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND = {
-                    note: "Contenedor de objetos que han desaparecido de la vista del jugador pero existen en el mundo.",
-                    subAreas: {}
-                };
-            }
-            const limboRoot = gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND;
-            if (!limboRoot.subAreas) limboRoot.subAreas = {};
+    // 2. Buscador recursivo para localizar al Padre y extraer al Hijo de forma segura
+    function procesarExtraccion(nodo) {
+        if (!nodo || typeof nodo !== 'object' || objetoHijoExtraido) return;
 
-            if (!limboRoot.subAreas.Contenedor_Global) {
-                limboRoot.subAreas.Contenedor_Global = { items: [] };
-            }
-            if (Array.isArray(limboRoot.subAreas.Contenedor_Global)) {
-                limboRoot.subAreas.Contenedor_Global = { items: [] };
-            }
-            if (!limboRoot.subAreas.Contenedor_Global.items) {
-                limboRoot.subAreas.Contenedor_Global.items = [];
-            }
-            const arrayLimboFinal = limboRoot.subAreas.Contenedor_Global.items;
-
-            // --- CASO A: EL OBJETO YA ESTÁ EN EL LIMBO -> RECUPERAR A SU ORIGEN DINÁMICO ---
-            if (objetoTarget.inLimbo === true) {
-                const infoOrigen = objetoTarget.last_seen;
-                let recuperadoConExito = false;
-
-                if (infoOrigen && infoOrigen.id) {
-                    // A.1: Regresar al interior de un Objeto Contenedor (Mochila, Cofre, etc.)
-                    if (infoOrigen.type === "object") {
-                        let contenedorDestino = null;
-                        let llaveInventarioDestino = "items";
-
-                        function buscarObjetoPadre(padre) {
-                            if (contenedorDestino || !padre || typeof padre !== 'object') return;
-                            if (Array.isArray(padre)) {
-                                padre.forEach(buscarObjetoPadre);
-                            } else {
-                                if (padre.idObj !== undefined && String(padre.idObj) === String(infoOrigen.id)) {
-                                    contenedorDestino = padre;
-                                    if (padre.content) llaveInventarioDestino = "content";
-                                    else if (padre.inv) llaveInventarioDestino = "inv";
-                                    else llaveInventarioDestino = "items";
-                                    return;
-                                }
-                                for (let k in padre) {
-                                    if (typeof padre[k] === 'object') buscarObjetoPadre(padre[k]);
-                                }
-                            }
-                        }
-                        buscarObjetoPadre(gameData.dynamicData.chars);
-                        buscarObjetoPadre(gameData.dynamicData.worldStorage);
-
-                        if (contenedorDestino) {
-                            if (!contenedorDestino[llaveInventarioDestino]) contenedorDestino[llaveInventarioDestino] = [];
-                            contenedorDestino[llaveInventarioDestino].push(objetoTarget);
-                            recuperadoConExito = true;
-                            alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" ha vuelto al interior de su contenedor [#ID: ${infoOrigen.id}].`);
-                        }
-                    }
-                    // A.2: Regresar al suelo de una SubÁrea del mapa
-                    else if (infoOrigen.type === "subArea") {
-                        function buscarSubAreaPorId(nodoAreas) {
-                            if (!nodoAreas || typeof nodoAreas !== 'object') return null;
-                            if (nodoAreas[infoOrigen.id]) return nodoAreas[infoOrigen.id];
-                            for (let k in nodoAreas) {
-                                if (nodoAreas[k].subAreas) {
-                                    let encontrado = buscarSubAreaPorId(nodoAreas[k].subAreas);
-                                    if (encontrado) return encontrado;
-                                }
-                            }
-                            return null;
-                        }
-                        const subAreaDestino = buscarSubAreaPorId(gameData.dynamicData.worldStorage);
-                        if (subAreaDestino) {
-                            if (!subAreaDestino.items) subAreaDestino.items = [];
-                            subAreaDestino.items.push(objetoTarget);
-                            recuperadoConExito = true;
-                            alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" regresó al suelo de [${infoOrigen.id}].`);
-                        }
-                    }
-                    // A.3: Regresar al inventario raíz de un Personaje
-                    else if (infoOrigen.type === "char") {
-                        const personajeDestino = gameData.dynamicData.chars[infoOrigen.id];
-                        if (personajeDestino) {
-                            if (!personajeDestino.inv) personajeDestino.inv = [];
-                            personajeDestino.inv.push(objetoTarget);
-                            recuperadoConExito = true;
-                            alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" regresó al inventario de [${infoOrigen.id}].`);
-                        }
-                    }
-                }
-
-                // Si se inyectó con éxito, lo borramos del Limbo
-                if (recuperadoConExito) {
-                    const idxLimbo = arrayLimboFinal.findIndex(it => it && it.idObj === objetoTarget.idObj);
-                    if (idxLimbo !== -1) arrayLimboFinal.splice(idxLimbo, 1);
-                    delete objetoTarget.inLimbo;
-                    delete objetoTarget.last_seen;
-                } else {
-                    // Fallback si el contenedor original ya no existe en la partida
-                    if (!pj.inv) pj.inv = [];
-                    pj.inv.push(objetoTarget);
-                    const idxLimbo = arrayLimboFinal.findIndex(it => it && it.idObj === objetoTarget.idObj);
-                    if (idxLimbo !== -1) arrayLimboFinal.splice(idxLimbo, 1);
-                    delete objetoTarget.inLimbo;
-                    delete objetoTarget.last_seen;
-                    alert(`🔄 ¡Recuperado por Emergencia! Devuelto al inventario raíz de ${selectedId}.`);
-                }
-            }
-            // --- CASO B: EL OBJETO ESTÁ EN EL MUNDO -> ENVIAR AL LIMBO DETECTANDO EL ORIGEN ---
-            else {
-                let procedenciaDetectada = null;
-
-                if (idPadreUI !== null) {
-                    // Verificamos si el ID recibido de la interfaz pertenece a la lista global de personajes
-                    if (gameData.dynamicData.chars[idPadreUI] !== undefined) {
-                        procedenciaDetectada = { type: "char", id: String(idPadreUI) };
-                    } else {
-                        // Si no es un personaje, es obligatoriamente un objeto contenedor independiente (Mochila, cofre, etc.)
-                        procedenciaDetectada = { type: "object", id: String(idPadreUI) };
-                    }
-                } else {
-                    // Si no tiene idPadreUI ni viene del inventario raíz, es un objeto tirado en el suelo del mapa
-                    const areaActual = pj.currentSubArea_id || pj.currentMiniArea_id || "Gensokyo";
-                    procedenciaDetectada = { type: "subArea", id: areaActual };
-                }
-
-                // Extraemos el objeto del JSON mediante un escaneo seguro
-                let removidoExitosamente = false;
-                function removerDeCualquierLugar(padre) {
-                    if (removidoExitosamente || !padre || typeof padre !== 'object') return;
-                    if (Array.isArray(padre)) {
-                        const idx = padre.findIndex(it => it && it.idObj === objetoTarget.idObj);
-                        if (idx !== -1) {
-                            padre.splice(idx, 1);
-                            removidoExitosamente = true;
-                            return;
-                        }
-                        padre.forEach(removerDeCualquierLugar);
-                    } else {
-                        for (let key in padre) {
-                            if (key !== 'SYSTEM_LOST_FOUND' && typeof padre[key] === 'object') {
-                                removerDeCualquierLugar(padre[key]);
-                            }
-                        }
-                    }
-                }
-
-                removerDeCualquierLugar(gameData.dynamicData.chars);
-                removerDeCualquierLugar(gameData.dynamicData.worldStorage);
-
-                // Lo guardamos en el Limbo con sus metadatos exactos de origen
-                objetoTarget.inLimbo = true;
-                objetoTarget.last_seen = procedenciaDetectada;
-                arrayLimboFinal.push(objetoTarget);
-
-                alert(`🌌 "${objetoTarget.n || "Objeto"}" enviado al Limbo.\nProcedencia guardada: [${procedenciaDetectada.type} -> ID: ${procedenciaDetectada.id}]`);
-            }
-
-            window.objetosInventarioTemp = [];
-            window.listasInventarioTemp = [];
-            updateUI();
+        // Si es un array (por ejemplo, .items, .content, .inv), buscamos dentro de sus elementos
+        if (Array.isArray(nodo)) {
+            nodo.forEach(procesarExtraccion);
+            return;
         }
-        function moveFromContainer(objId, containerId) {
-            const itemTarget = findItemContext(objId);
-            const containerTarget = findItemContext(containerId);
-            if (itemTarget && containerTarget) {
-                const itemToMove = itemTarget.array.splice(itemTarget.index, 1)[0];
-                containerTarget.array.push(itemToMove);
-                updateUI();
+
+        // Si este nodo es el Contenedor Padre que buscamos
+        if (nodo.idObj !== undefined && String(nodo.idObj) === targetPadreId) {
+            contenedorPadreEncontrado = nodo;
+
+            // Buscamos cuál es la sublista donde guarda sus ítems (.items, .content, .inv)
+            let llavesInventario = ['items', 'content', 'inv'];
+            for (let llave of llavesInventario) {
+                if (nodo[llave] && Array.isArray(nodo[llave])) {
+                    const idxHijo = nodo[llave].findIndex(item => item && String(item.idObj) === targetHijoId);
+                    if (idxHijo !== -1) {
+                        // Extraemos al hijo permanentemente de esa sublista
+                        objetoHijoExtraido = nodo[llave].splice(idxHijo, 1)[0];
+                        return;
+                    }
+                }
             }
         }
+
+        // Si no es el padre, seguimos escaneando el árbol de forma profunda
+        for (let key in nodo) {
+            if (typeof nodo[key] === 'object' && key !== 'SYSTEM_LOST_FOUND') {
+                procesarExtraccion(nodo[key]);
+            }
+        }
+    }
+
+    // Ejecutamos la búsqueda comenzando en los inventarios de los personajes y luego en el mapa mundial
+    procesarExtraccion(gameData.dynamicData.chars);
+    if (!objetoHijoExtraido) {
+        procesarExtraccion(gameData.dynamicData.worldStorage);
+    }
+
+    // 3. Si no se encontró el flujo jerárquico, lanzamos una alerta de control
+    if (!objetoHijoExtraido) {
+        alert("❌ Error: No se pudo localizar la relación de objetos en este contenedor.");
+        return;
+    }
+
+    // 4. Determinamos el destino del objeto extraído (El Exterior)
+    // Buscamos si el contenedor padre está en el inventario raíz de algún personaje
+    let esObjetoDeInventario = false;
+    function verificarSiEsDelInventario(personaje) {
+        if (!personaje || !personaje.inv || !Array.isArray(personaje.inv)) return false;
+        // Si el padre directo es el personaje o si está contenido en la raíz de su equipaje
+        return String(personaje.idObj) === targetPadreId || personaje.inv.some(it => it && String(it.idObj) === targetPadreId);
+    }
+
+    // Si el padre pertenece al equipaje o mochila del personaje seleccionado, va directo a su inventario raíz (.inv)
+    if (verificarSiEsDelInventario(pj)) {
+        if (!pj.inv) pj.inv = [];
+        pj.inv.push(objetoHijoExtraido);
+        alert(`🎒 Has sacado "${objetoHijoExtraido.n || 'Objeto'}" de su contenedor. Ahora está en la raíz de tu inventario.`);
+    } else {
+        // En caso contrario, significa que el contenedor está en el suelo. El ítem cae al suelo de la subárea actual.
+        const subAreaId = pj.currentSubArea_id;
+        
+        function buscarSubAreaNodo(nodo, idBuscar) {
+            if (!nodo || typeof nodo !== 'object') return null;
+            if (nodo[idBuscar]) return nodo[idBuscar];
+            for (let clave in nodo) {
+                if (nodo[clave] && nodo[clave].subAreas) {
+                    const encontrado = buscarSubAreaNodo(nodo[clave].subAreas, idBuscar);
+                    if (encontrado) return encontrado;
+                }
+            }
+            return null;
+        }
+
+        const subAreaNodo = buscarSubAreaNodo(gameData.dynamicData.worldStorage, subAreaId);
+        if (subAreaNodo) {
+            if (!subAreaNodo.items) subAreaNodo.items = [];
+            subAreaNodo.items.push(objetoHijoExtraido);
+            alert(`📦 Sólido: Has sacado "${objetoHijoExtraido.n || 'Objeto'}" del contenedor. Ha caído al suelo de [${subAreaId}].`);
+        } else {
+            // Plan de contingencia por si el personaje no tiene subárea asignada en ese instante
+            if (!pj.inv) pj.inv = [];
+            pj.inv.push(objetoHijoExtraido);
+            alert(`⚠️ Devolución de emergencia: Almacenado en la raíz de tu inventario.`);
+        }
+    }
+
+    // 5. Vaciamos las tablas hash de referencias y recargamos la UI congelando el foco del personaje activo
+    window.objetosInventarioTemp = [];
+    window.listasInventarioTemp = [];
+    initGame(idActual);
+}
         function moveIntoContainer(objId, destId = null) {
             if (!gameData || !gameData.dynamicData) return;
 
@@ -1017,107 +996,272 @@ const estaEspiandoChars = extraCharIds.length > 0;
             window.listasInventarioTemp = [];
             updateUI();
         }
-        function getAllSources(root) {
-            let sources = [];
-            if (root.chars) {
-                for (let p in root.chars) sources.push(root.chars[p].inv);
+        function recogerObjeto(idObjAlmacen) {
+    // 1. Recuperamos el objeto real desde el almacén de memoria temporal
+    const objetoARecoger = window.objetosInventarioTemp[idObjAlmacen];
+    if (!objetoARecoger) {
+        alert("❌ Error: No se pudo localizar el objeto a recoger en la memoria actual.");
+        return;
+    }
+
+    const selectedId = document.getElementById('charSelect').value;
+    const pj = buscarObjetoPersonajePorId(selectedId);
+    if (!pj) return;
+
+    // 2. Localizamos la subárea del suelo actual de forma segura
+    const currentSubAreaObj = getSubAreaObject(pj.currentSubArea_id);
+    if (!currentSubAreaObj || !currentSubAreaObj.items || !Array.isArray(currentSubAreaObj.items)) {
+        alert("⚠️ Alerta: No se encontraron objetos en el suelo de esta subárea.");
+        return;
+    }
+
+    // 3. Sacamos el objeto de la lista del suelo
+    const idx = currentSubAreaObj.items.findIndex(it => it && it.idObj === objetoARecoger.idObj);
+    if (idx !== -1) {
+        currentSubAreaObj.items.splice(idx, 1);
+    } else {
+        alert("⚠️ Alerta: El objeto ya no se encuentra físicamente en el suelo de esta zona.");
+        return;
+    }
+
+    // 4. Aseguramos que el inventario del personaje esté inicializado e inyectamos el ítem
+    if (!pj.inv || !Array.isArray(pj.inv)) {
+        pj.inv = [];
+    }
+    pj.inv.push(objetoARecoger);
+
+    // 5. Feedback visual, limpieza de referencias y refresco instantáneo de la interfaz
+    alert(`Has recogido "${objetoARecoger.n || "Objeto"}" del suelo. Ahora está en tu inventario.`);
+
+    window.objetosInventarioTemp = [];
+    window.listasInventarioTemp = [];
+    initGame(selectedId);
+}
+
+function soltarObjeto(idObjAlmacen) {
+    // 1. Recuperamos el objeto real usando el almacén por referencia
+    const objetoTarget = window.objetosInventarioTemp[idObjAlmacen];
+    if (!objetoTarget) {
+        alert("❌ Error: No se pudo localizar el objeto en la memoria.");
+        return;
+    }
+
+    // 2. Localizamos de forma segura al personaje seleccionado en la interfaz
+    const idActual = document.getElementById('charSelect').value;
+    const pj = buscarObjetoPersonajePorId(idActual);
+    if (!pj || !pj.inv || !Array.isArray(pj.inv)) {
+        alert("🚨 El personaje no tiene una estructura de inventario raíz válida.");
+        return;
+    }
+
+    // 3. Extraemos el objeto de la raíz de su inventario
+    const indexItem = pj.inv.findIndex(it => it && it.idObj === objetoTarget.idObj);
+    if (indexItem === -1) {
+        alert("🚨 El objeto seleccionado no se encuentra en la raíz del inventario actual.");
+        return;
+    }
+
+    // 4. Buscamos de forma segura la subárea física en el mapa
+    const subAreaId = pj.currentSubArea_id;
+    if (!subAreaId) {
+        alert("🚨 No puedes soltar un objeto si el personaje está fuera del mapa o desterrado.");
+        return;
+    }
+
+    // Buscador recursivo en el árbol jerárquico del mapamundi
+    const buscarSubAreaNodo = (nodo, idBuscar) => {
+        if (!nodo || typeof nodo !== 'object') return null;
+        if (nodo[idBuscar]) return nodo[idBuscar];
+        for (let clave in nodo) {
+            if (nodo[clave] && nodo[clave].subAreas) {
+                const encontrado = buscarSubAreaNodo(nodo[clave].subAreas, idBuscar);
+                if (encontrado) return encontrado;
             }
-            if (root.worldStorage) {
-                for (let a in root.worldStorage) {
-                    for (let m in root.worldStorage[a].miniAreas) {
-                        sources.push(root.worldStorage[a].miniAreas[m]);
+        }
+        return null;
+    };
+
+    const subAreaNodo = buscarSubAreaNodo(gameData.dynamicData.worldStorage, subAreaId);
+    if (!subAreaNodo) {
+        alert(`🚨 ERROR: No se encontró la SubÁrea física "${subAreaId}" en el mapa.`);
+        return;
+    }
+
+    // 5. Quitamos del inventario y lo tiramos al suelo (items de la subárea)
+    pj.inv.splice(indexItem, 1);
+    if (!subAreaNodo.items) subAreaNodo.items = [];
+    subAreaNodo.items.push(objetoTarget);
+
+    alert(`📦 Has soltado "${objetoTarget.n || 'Objeto'}" en el suelo de la subárea [${subAreaId}].`);
+
+    // 6. Refrescamos la interfaz manteniendo el foco clavado en el personaje activo
+    window.objetosInventarioTemp = [];
+    window.listasInventarioTemp = [];
+    initGame(idActual);
+}
+
+function toggleLimbo(idObjAlmacen, idPadreUI = null) {
+    const objetoTarget = window.objetosInventarioTemp[idObjAlmacen];
+    if (!objetoTarget) {
+        alert("❌ Error: No se pudo localizar el objeto en la memoria actual.");
+        return;
+    }
+
+    const selectedId = document.getElementById('charSelect').value;
+    const pj = buscarObjetoPersonajePorId(selectedId);
+    if (!pj) return;
+
+    if (!gameData.dynamicData.worldStorage) gameData.dynamicData.worldStorage = {};
+    if (!gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND) {
+        gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND = {
+            name: "Contenedor Global del Limbo",
+            desc: "Espacio seguro del sistema para objetos huérfanos o desterrados.",
+            subAreas: { Contenedor_Global: [] }
+        };
+    }
+    
+    const limboRoot = gameData.dynamicData.worldStorage.SYSTEM_LOST_FOUND;
+    if (!limboRoot.subAreas) limboRoot.subAreas = {};
+    if (!limboRoot.subAreas.Contenedor_Global) limboRoot.subAreas.Contenedor_Global = [];
+    
+    // Si la estructura del limbo es un objeto contenedor en vez de un array plano, nos adaptamos
+    let arrayLimboFinal = Array.isArray(limboRoot.subAreas.Contenedor_Global) 
+        ? limboRoot.subAreas.Contenedor_Global 
+        : (limboRoot.subAreas.Contenedor_Global.items || (limboRoot.subAreas.Contenedor_Global.items = []));
+
+    // --- CASO A: RECUPERAR DEL LIMBO ---
+    if (objetoTarget.inLimbo === true) {
+        const infoOrigen = objetoTarget.last_seen;
+        let recuperadoConExito = false;
+
+        if (infoOrigen && infoOrigen.id) {
+            if (infoOrigen.type === "object") {
+                let contenedorDestino = null;
+                let llaveInventarioDestino = "items";
+
+                function buscarObjetoPadre(padre) {
+                    if (contenedorDestino || !padre || typeof padre !== 'object') return;
+                    if (Array.isArray(padre)) {
+                        padre.forEach(buscarObjetoPadre);
+                    } else {
+                        if (padre.idObj !== undefined && String(padre.idObj) === String(infoOrigen.id)) {
+                            contenedorDestino = padre;
+                            if (padre.content) llaveInventarioDestino = "content";
+                            else if (padre.inv) llaveInventarioDestino = "inv";
+                            else llaveInventarioDestino = "items";
+                            return;
+                        }
+                        for (let k in padre) {
+                            if (typeof padre[k] === 'object') buscarObjetoPadre(padre[k]);
+                        }
+                    }
+                }
+                buscarObjetoPadre(gameData.dynamicData.chars);
+                buscarObjetoPadre(gameData.dynamicData.worldStorage);
+
+                if (contenedorDestino) {
+                    if (!contenedorDestino[llaveInventarioDestino]) contenedorDestino[llaveInventarioDestino] = [];
+                    contenedorDestino[llaveInventarioDestino].push(objetoTarget);
+                    recuperadoConExito = true;
+                    alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" ha vuelto al interior de [#ID: ${infoOrigen.id}].`);
+                }
+            }
+            else if (infoOrigen.type === "subArea") {
+                function buscarSubAreaPorId(nodoAreas) {
+                    if (!nodoAreas || typeof nodoAreas !== 'object') return null;
+                    if (nodoAreas[infoOrigen.id]) return nodoAreas[infoOrigen.id];
+                    for (let k in nodoAreas) {
+                        if (nodoAreas[k].subAreas) {
+                            let encontrado = buscarSubAreaPorId(nodoAreas[k].subAreas);
+                            if (encontrado) return encontrado;
+                        }
+                    }
+                    return null;
+                }
+                const subAreaDestino = buscarSubAreaPorId(gameData.dynamicData.worldStorage);
+                if (subAreaDestino) {
+                    if (!subAreaDestino.items) subAreaDestino.items = [];
+                    subAreaDestino.items.push(objetoTarget);
+                    recuperadoConExito = true;
+                    alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" regresó al suelo de [${infoOrigen.id}].`);
+                }
+            }
+            else if (infoOrigen.type === "char") {
+                const personajeDestino = buscarObjetoPersonajePorId(infoOrigen.id);
+                if (personajeDestino) {
+                    if (!personajeDestino.inv) personajeDestino.inv = [];
+                    personajeDestino.inv.push(objetoTarget);
+                    recuperadoConExito = true;
+                    alert(`🔄 ¡Recuperado! "${objetoTarget.n || "Objeto"}" regresó al inventario de [${infoOrigen.id}].`);
+                }
+            }
+        }
+
+        if (recuperadoConExito) {
+            const idxLimbo = arrayLimboFinal.findIndex(it => it && it.idObj === objetoTarget.idObj);
+            if (idxLimbo !== -1) arrayLimboFinal.splice(idxLimbo, 1);
+            delete objetoTarget.inLimbo;
+            delete objetoTarget.last_seen;
+        } else {
+            if (!pj.inv) pj.inv = [];
+            pj.inv.push(objetoTarget);
+            const idxLimbo = arrayLimboFinal.findIndex(it => it && it.idObj === objetoTarget.idObj);
+            if (idxLimbo !== -1) arrayLimboFinal.splice(idxLimbo, 1);
+            delete objetoTarget.inLimbo;
+            delete objetoTarget.last_seen;
+            alert(`🔄 ¡Devolución de emergencia! Colocado en el inventario raíz de ${selectedId}.`);
+        }
+    }
+    // --- CASO B: ENVIAR AL LIMBO ---
+    else {
+        let procedenciaDetectada = null;
+
+        if (idPadreUI !== null) {
+            if (buscarObjetoPersonajePorId(idPadreUI) !== null) {
+                procedenciaDetectada = { type: "char", id: String(idPadreUI) };
+            } else {
+                procedenciaDetectada = { type: "object", id: String(idPadreUI) };
+            }
+        } else {
+            procedenciaDetectada = { type: "subArea", id: pj.currentSubArea_id || "MFTreeZone1" };
+        }
+
+        let removidoExitosamente = false;
+        function removerDeCualquierLugar(padre) {
+            if (removidoExitosamente || !padre || typeof padre !== 'object') return;
+            if (Array.isArray(padre)) {
+                const idx = padre.findIndex(it => it && it.idObj === objetoTarget.idObj);
+                if (idx !== -1) {
+                    padre.splice(idx, 1);
+                    removidoExitosamente = true;
+                    return;
+                }
+                padre.forEach(removerDeCualquierLugar);
+            } else {
+                for (let key in padre) {
+                    if (key !== 'SYSTEM_LOST_FOUND' && typeof padre[key] === 'object') {
+                        removerDeCualquierLugar(padre[key]);
                     }
                 }
             }
-            return sources;
         }
-        function recogerObjetoReferencia(idObjAlmacen) {
-            // 1. Recuperamos el objeto real desde el almacén de memoria temporal
-            const objetoARecoger = window.objetosInventarioTemp[idObjAlmacen];
-            if (!objetoARecoger) {
-                alert("❌ Error: No se pudo localizar el objeto a recoger en la memoria actual.");
-                return;
-            }
 
-            const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
-            if (!pj) return;
+        removerDeCualquierLugar(gameData.dynamicData.chars);
+        removerDeCualquierLugar(gameData.dynamicData.worldStorage);
 
-            // 2. Localizamos la subárea del suelo actual de forma segura
-            const currentSubAreaObj = getSubAreaObject(pj.currentSubArea_id);
-            if (!currentSubAreaObj || !currentSubAreaObj.items || !Array.isArray(currentSubAreaObj.items)) {
-                alert("⚠️ Alerta: No se encontraron objetos en el suelo de esta subárea.");
-                return;
-            }
+        objetoTarget.inLimbo = true;
+        objetoTarget.last_seen = procedenciaDetectada;
+        arrayLimboFinal.push(objetoTarget);
 
-            // 3. Sacamos el objeto de la lista del suelo
-            const idx = currentSubAreaObj.items.findIndex(it => it && it.idObj === objetoARecoger.idObj);
-            if (idx !== -1) {
-                currentSubAreaObj.items.splice(idx, 1);
-            } else {
-                alert("⚠️ Alerta: El objeto ya no se encuentra físicamente en el suelo de esta zona.");
-                return;
-            }
+        alert(`🌌 "${objetoTarget.n || "Objeto"}" enviado al Limbo.\nOrigen registrado: [${procedenciaDetectada.type} -> ID: ${procedenciaDetectada.id}]`);
+    }
 
-            // 4. Aseguramos que el inventario del personaje esté inicializado e inyectamos el ítem
-            if (!pj.inv || !Array.isArray(pj.inv)) {
-                pj.inv = [];
-            }
-            pj.inv.push(objetoARecoger);
+    window.objetosInventarioTemp = [];
+    window.listasInventarioTemp = [];
+    initGame(selectedId);
+}
 
-            // 5. Feedback visual, limpieza de referencias y refresco instantáneo de la interfaz
-            alert(`Has recogido "${objetoARecoger.n || "Objeto"}" del suelo. Ahora está en tu inventario.`);
-
-            window.objetosInventarioTemp = [];
-            window.listasInventarioTemp = [];
-            updateUI();
-        }
-        function soltarObjetoReferencia(idObjAlmacen) {
-            // 1. Recuperamos el objeto real desde el almacén de memoria
-            const objetoASoltar = window.objetosInventarioTemp[idObjAlmacen];
-            if (!objetoASoltar) {
-                alert("❌ Error: No se pudo localizar el objeto a soltar en la memoria actual.");
-                return;
-            }
-
-            const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
-            if (!pj) return;
-
-            // 2. Localizamos el objeto del suelo de la subárea actual
-            const currentSubAreaObj = getSubAreaObject(pj.currentSubArea_id);
-            if (!currentSubAreaObj) {
-                alert(`❌ Error del motor: No se encontró la subárea "${pj.currentSubArea_id}" en el almacenamiento del mapa.`);
-                return;
-            }
-
-            // Aseguramos que la subárea tenga su array de ítems listo
-            if (!currentSubAreaObj.items || !Array.isArray(currentSubAreaObj.items)) {
-                currentSubAreaObj.items = [];
-            }
-
-            // 3. Sacamos el objeto del inventario raíz del personaje
-            if (pj.inv && Array.isArray(pj.inv)) {
-                const idx = pj.inv.findIndex(it => it && it.idObj === objetoASoltar.idObj);
-                if (idx !== -1) {
-                    pj.inv.splice(idx, 1);
-                } else {
-                    alert("⚠️ Alerta: El objeto no se encontró directamente en la raíz de tu inventario.");
-                    return;
-                }
-            }
-
-            // 4. Lo depositamos en el suelo (items de la subárea)
-            currentSubAreaObj.items.push(objetoASoltar);
-
-            // 5. Mensaje de feedback, limpieza de referencias y refresco completo
-            alert(`Has soltado "${objetoASoltar.n || "Objeto"}" al suelo en ${pj.currentSubArea_id}.`);
-
-            window.objetosInventarioTemp = [];
-            window.listasInventarioTemp = [];
-            updateUI();
-        }
-        function abrirSelectorContenedoresReferencia(idObjAlmacen) {
+        function abrirSelectorContenedores(idObjAlmacen) {
             const objetoTarget = window.objetosInventarioTemp[idObjAlmacen];
             if (!objetoTarget) return;
 
@@ -1189,34 +1333,8 @@ const estaEspiandoChars = extraCharIds.length > 0;
             // Delegamos a la función principal que procesará el movimiento definitivo
             moveIntoContainer(objetoTarget.idObj, destId);
         }
-        function findItemContext(objId) {
-            if (!gameData) return null;
-            const root = gameData.dynamicData;
-            const sId = String(objId).trim();
-            let sources = getAllSources(root);
-            const search = (arr) => {
-                if (!Array.isArray(arr)) return null;
-                const idx = arr.findIndex(o => o && String(o.idObj) === sId);
-                if (idx !== -1) return { array: arr, index: idx, item: arr[idx] };
-                for (let obj of arr) {
-                    if (!obj || typeof obj !== 'object') continue;
-                    for (let key in obj) {
-                        if (Array.isArray(obj[key])) {
-                            const found = search(obj[key]);
-                            if (found) return found;
-                        }
-                    }
-                }
-                return null;
-            };
-            for (let src of sources) {
-                const result = search(src);
-                if (result) return result;
-            }
-            return null;
-        }
         function habilitarEdicionStats(elemento, pjId, statKey, indice) {
-            const pj = gameData.dynamicData.chars[pjId];
+            const pj = buscarObjetoPersonajePorId(pjId);
             const input = document.createElement('input');
             input.type = 'number';
             input.value = pj[statKey][indice];
@@ -1231,12 +1349,6 @@ const estaEspiandoChars = extraCharIds.length > 0;
             elemento.innerHTML = '';
             elemento.appendChild(input);
             input.focus();
-        }
-        function habilitarEdicionInventario(elemento, clave, objId) {
-            // Versión antigua, me pregunto si sería posible con la nueva estructura del JSON que tiene subAreas o no
-            const contexto = findItemContext(objId);
-            if (!contexto) return;
-            habilitarEdicion(elemento, clave, contexto.item);
         }
 
         function habilitarEdicionClima(elemento, subAreaId) {
@@ -1274,100 +1386,191 @@ const estaEspiandoChars = extraCharIds.length > 0;
     elemento.appendChild(select);
     select.focus();
 }
+
+        // Función auxiliar por si no la tienes implementada para guardar datos dinámicos por string path
+        function establecerValorPorPath(obj, path, value) {
+            const parts = path.split('.');
+            let current = obj;
+            for (let i = 0; i < parts.length - 1; i++) {
+                if (!current[parts[i]]) current[parts[i]] = {};
+                current = current[parts[i]];
+            }
+            current[parts[parts.length - 1]] = value;
+        }
         function habilitarEdicionText(elemento, clave, path) {
+            if (!path || path[clave] === undefined) return;
+
+            const valorActual = path[clave] || "";
             const input = document.createElement('input');
             input.type = 'text';
-            input.value = path[clave];
+            input.value = valorActual;
+            
             Object.assign(input.style, {
-                width: "80px",
-                background: "#000",
-                color: "#00ff00",
-                border: "1px solid var(--accent)",
-                fontFamily: "monospace"
+                width: "90%",
+                background: "#222",
+                color: "#fff",
+                border: "1px solid var(--accent, #ff4757)",
+                padding: "4px",
+                borderRadius: "3px",
+                fontFamily: "inherit"
             });
-            const guardar = () => {
-                let nuevoValor = input.value;
-                path[clave] = nuevoValor;
-                updateUI();
+            
+            const guardarTexto = () => {
+                const nuevoValor = input.value.trim();
+                if (nuevoValor !== valorActual) {
+                    path[clave] = nuevoValor;
+                    // 🌟 Guardamos el ID que estamos editando justo ahora antes del refresco
+                    const idAEditar = selectedId; 
+
+                    if (clave === 'nick' || clave === 'currentSubArea_id') {
+                        // Pasamos el ID exacto para congelar la vista en este personaje
+                        initGame(idAEditar); 
+                    } else {
+                        updateUI();
+                    }
+                } else {
+                    updateUI();
+                }
             };
-            input.onblur = guardar;
-            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            
+            input.onblur = guardarTexto;
+            input.onkeydown = function(e) {
+                if (e.key === 'Enter') input.blur();
+                if (e.key === 'Escape') { updateUI(); }
+            };
+            
             elemento.innerHTML = '';
             elemento.appendChild(input);
             input.focus();
+            input.select();
         }
+
         function habilitarEdicionBoolean(elemento, clave, path, valTrue = "Si", valFalse = "No") {
+            // Creamos un contenedor temporal para que no pierda el foco de golpe al hacer clic
             const select = document.createElement('select');
-            //const optTrue = new Option(clave === 'fem' ? 'Femenino' : 'SÍ', true);
-            //const optFalse = new Option(clave === 'fem' ? 'Masculino' : 'NO', false);
             const optTrue = new Option(valTrue, true);
             const optFalse = new Option(valFalse, false);
 
             select.add(optTrue);
             select.add(optFalse);
-            select.value = path[clave]; // Mantiene el valor previo por defecto
+            
+            // Forzamos el valor actual stringificado
+            select.value = String(path[clave]); 
+
+            // Variable de control para evitar que se ejecute dos veces seguidas (por blur y change a la vez)
+            let yaGuardado = false;
 
             const guardarBool = () => {
-                // Al ser un select, siempre tendrá un valor, manteniendo el previo si no se cambia
-                path[clave] = (select.value === 'true');
+                if (yaGuardado) return;
+                yaGuardado = true;
+
+                const nuevoValor = (select.value === 'true');
+                path[clave] = nuevoValor;
+                
                 updateUI();
             };
 
-            select.onblur = guardarBool;
+            // 🌟 LA CLAVE: El evento 'change' captura el clic del mouse instantáneamente
             select.onchange = guardarBool;
+            
+            // El 'blur' solo actúa como salvavidas por si el usuario abre el desplegable y hace clic en otra parte sin elegir nada
+            select.onblur = () => {
+                // Pequeño retraso para dar tiempo a que el evento 'change' se procese si se hizo clic en una opción
+                setTimeout(guardarBool, 150);
+            };
+
+            // Soporte para cerrar con la tecla Escape
+            select.onkeydown = (e) => {
+                if (e.key === 'Escape') updateUI();
+            };
+
             elemento.innerHTML = '';
             elemento.appendChild(select);
             select.focus();
+            
+            // Opcional: Abre automáticamente el desplegable en navegadores modernos al hacer clic
+            if (typeof select.showPicker === 'function') {
+                try { select.showPicker(); } catch(e) {}
+            }
         }
+
         function habilitarEdicionNumber(elemento, clave, path, numMin = null, numMax = null) {
             const input = document.createElement('input');
-            input.type = 'text';
-            input.value = path[clave];
+            input.type = 'text'; 
+            input.value = path[clave] !== undefined ? path[clave] : '';
+            
             Object.assign(input.style, {
                 width: "80px",
                 background: "#000",
                 color: "#00ff00",
-                border: "1px solid var(--accent)",
+                border: "1px solid var(--accent, #00ff00)",
                 fontFamily: "monospace"
             });
+
+            let guardadoEjecutado = false;
+
             const guardar = () => {
-                let nuevoValor = input.value;
-                input.type = 'number';
-                if (isNaN(nuevoValor)) {
-                    if (!confirm(`El valor previo de "${clave}" es un número. ¿Quieres guardarlo como texto de todas formas? (Si aceptas y no sabes lo que haces podrías corromper tu partida, cuidado)`)) {
+                if (guardadoEjecutado) return;
+                guardadoEjecutado = true;
+
+                let nuevoValorRaw = input.value.trim();
+                
+                if (nuevoValorRaw === '') {
+                    updateUI();
+                    return;
+                }
+
+                if (isNaN(nuevoValorRaw)) {
+                    if (!confirm(`El valor previo de "${clave}" es un número. ¿Quieres guardarlo como texto de todas formas?`)) {
                         updateUI();
                         return;
                     } else {
-                        path[clave] = nuevoValor;
+                        path[clave] = nuevoValorRaw;
                         updateUI();
                         return;
                     }
                 } else {
-                    if ((numMin != null && nuevoValor < numMin) || (numMax != null && nuevoValor > numMax)) {
+                    let numeroValido = parseFloat(nuevoValorRaw);
+                    if ((numMin !== null && numeroValido < numMin) || (numMax !== null && numeroValido > numMax)) {
+                        alert(`Valor fuera de rango permitido (${numMin} - ${numMax})`);
                         updateUI();
                         return;
                     }
+                    path[clave] = numeroValido;
                 }
-                path[clave] = parseFloat(nuevoValor);
                 updateUI();
             };
+
             input.onblur = guardar;
-            input.onkeydown = (e) => { if (e.key === 'Enter') guardar(); };
+            input.onkeydown = (e) => { 
+                if (e.key === 'Enter') { input.blur(); }
+                if (e.key === 'Escape') { updateUI(); }
+            };
+            
             elemento.innerHTML = '';
             elemento.appendChild(input);
             input.focus();
+            input.select();
         }
+
         function habilitarEdicion(elemento, clave, path, param1 = null, param2 = null) {
-            const posibleNum = parseFloat(path[clave]);
-            if (!isNaN(posibleNum)) {
+            if (path === null || path === undefined) return;
+            
+            const valorActual = path[clave];
+
+            // Si el valor actual es un número válido (o string puramente numérico)
+            if (typeof valorActual === "number" || (!isNaN(parseFloat(valorActual)) && isFinite(valorActual))) {
                 return habilitarEdicionNumber(elemento, clave, path, param1, param2);
             }
-            switch (typeof path[clave]) {
+
+            switch (typeof valorActual) {
                 case "boolean":
                     return habilitarEdicionBoolean(elemento, clave, path, param1 ? param1 : "Si", param2 ? param2 : "No");
                 case "number":
-                    return habilitarEdicionNumber(elemento, clave, path, numMin, numMax);
+                    //return habilitarEdicionNumber(elemento, clave, path, param1, param2); 
                 default:
+                    // 🌟 ¡PUENTE UNIVERSAL ACTIVADO!
+                    // Le pasa el elemento del DOM, la clave y el objeto en memoria directamente.
                     return habilitarEdicionText(elemento, clave, path);
             }
         }
@@ -1737,7 +1940,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
         function habilitarEdicionArrayStringPj(elemento, claveLista, identificador) {
             if (!gameData) return;
             const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
+            const pj = buscarObjetoPersonajePorId(selectedId);
 
             const input = document.createElement('input');
             input.type = 'text';
@@ -1770,7 +1973,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
         function agregarElementoArrayStringPj(claveLista) {
             if (!gameData) return;
             const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
+            const pj = buscarObjetoPersonajePorId(selectedId);
 
             if (!pj[claveLista]) pj[claveLista] = [];
 
@@ -1788,7 +1991,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
         function eliminarElementoArrayStringPj(claveLista, identificador) {
             if (!gameData) return;
             const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
+            const pj = buscarObjetoPersonajePorId(selectedId);
             if (confirm("¿Seguro que deseas eliminar este elemento?")) {
                 pj[claveLista].splice(identificador, 1);
             }
@@ -1799,7 +2002,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
         function moverElementoArrayStringPj(claveLista, idx, direccion) {
             if (!gameData) return;
             const selectedId = document.getElementById('charSelect').value;
-            const pj = gameData.dynamicData.chars[selectedId];
+            const pj = buscarObjetoPersonajePorId(selectedId);
             const lista = pj[claveLista];
 
             if (!lista) return;
@@ -1818,7 +2021,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
 
         function habilitarEdicionEspecial(elemento, clave, pjId) {
             if (!gameData) return;
-            const pj = gameData.dynamicData.chars[pjId];
+            const pj = buscarObjetoPersonajePorId(selectedId);
             if (!pj) return;
 
             // Obtener el valor actual formateado de forma legible
@@ -1871,60 +2074,110 @@ const estaEspiandoChars = extraCharIds.length > 0;
         }
 
         function agregarPjCercano(pjId) {
-            if (!gameData) return;
+            if (!gameData || !gameData.dynamicData || !gameData.dynamicData.chars) return;
+            
+            // Usamos nuestra función de rescate universal para obtener el personaje que está emitiendo el radar
+            const pj = buscarObjetoPersonajePorId(selectedId);
+            if (!pj) return;
 
-            const pjsYaAgregados = (gameData.dynamicData.chars[pjId].detectedCharsNearbyList || []).map(item => item.nearby_pj_id);
+            const pjsYaAgregados = (pj.detectedCharsNearbyList || []).map(item => item.nearby_pj_id);
 
-            // 1. Obtener las IDs válidas
-            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
-                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
+            // =========================================================================
+            // 📡 RECOLECTAR IDs DESDE LA NUEVA ESTRUCTURA COMPARTIMENTADA
+            // =========================================================================
+            const charsNode = gameData.dynamicData.chars;
+            let todasLasIdsExistentes = [];
+
+            // Si la estructura ya está dividida, extraemos de ambos bloques
+            if (charsNode.players || charsNode.npcs) {
+                if (charsNode.players) todasLasIdsExistentes = todasLasIdsExistentes.concat(Object.keys(charsNode.players));
+                if (charsNode.npcs) todasLasIdsExistentes = todasLasIdsExistentes.concat(Object.keys(charsNode.npcs));
+            } else {
+                // Fallback por si acaso lee un JSON antiguo plano en memoria
+                todasLasIdsExistentes = Object.keys(charsNode);
+            }
+
+            // 1. Filtrar las IDs válidas (quitamos la plantilla, al propio emisor y los que ya están en su radar)
+            const todosLosPjs = todasLasIdsExistentes.filter(id => {
+                return id !== 'id_tplMANDATORY' && id !== selectedId && !pjsYaAgregados.includes(id);
             });
 
             // 2. Mostrar la lista de IDs al usuario en un mensaje interactivo
+            if (todosLosPjs.length === 0) {
+                alert("No hay más personajes registrados disponibles para añadir a este radar de proximidad.");
+                return;
+            }
+
             const mensaje = `IDs de personajes disponibles:\n- ${todosLosPjs.join('\n- ')}\n\nEscribe exactamente el ID del personaje que deseas añadir:`;
             const seleccion = prompt(mensaje);
 
-            if (!seleccion) return; // Si cancela, no hace nada
+            if (!seleccion) return; // Si cancela o deja vacío, no hace nada
 
             const idLimpia = seleccion.trim();
 
-            // 3. VALIDACIÓN ESTRICTA: Comprobar si el ID introducido existe en la lista
+            // 3. VALIDACIÓN ESTRICTA: Comprobar si el ID introducido existe en la lista unificada
             if (!todosLosPjs.includes(idLimpia)) {
-                alert(`🚨 ERROR: El ID "${idLimpia}" no pertenece a ningún personaje registrado en la partida.`);
+                alert(`🚨 ERROR: El ID "${idLimpia}" no pertenece a ningún personaje registrado en la partida (o ya está añadido).`);
                 return; // Detiene la creación
             }
 
-            // 4. Estructura base para el nuevo objeto dentro del array
+            // 4. Estructura base para el nuevo objeto dentro del array de proximidad
             const nuevoPjCercano = {
                 nearby_pj_id: idLimpia,
                 recognized: false,
                 distance: "Cerca"
             };
 
-            // 5. Insertar en el JSON y actualizar la UI
-            if (!gameData.dynamicData.chars[pjId].detectedCharsNearbyList) {
-                gameData.dynamicData.chars[pjId].detectedCharsNearbyList = [];
+            // 5. Insertar en el JSON y actualizar la UI de manera persistente
+            if (!pj.detectedCharsNearbyList) {
+                pj.detectedCharsNearbyList = [];
             }
 
-            gameData.dynamicData.chars[pjId].detectedCharsNearbyList.push(nuevoPjCercano);
+            pj.detectedCharsNearbyList.push(nuevoPjCercano);
             alert(`✅ Añadido "${idLimpia}" a la lista de personajes cercanos.`);
+            
+            // Refrescamos pasando el selectedId para que la vista permanezca congelada en el personaje actual
+            initGame(selectedId); 
             updateUI();
         }
 
         function habilitarEdicionElegirIDPj(elemento, pjId, index) {
-            const currentVal = gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id;
-            const pjsYaAgregados = gameData.dynamicData.chars[pjId].detectedCharsNearbyList
+            // Usamos la función de rescate universal para el personaje emisor
+            const pj = buscarObjetoPersonajePorId(selectedId);
+            if (!pj || !pj.detectedCharsNearbyList || !pj.detectedCharsNearbyList[index]) return;
+
+            const currentVal = pj.detectedCharsNearbyList[index].nearby_pj_id;
+            const pjsYaAgregados = pj.detectedCharsNearbyList
                 .map(item => item.nearby_pj_id)
                 .filter(id => id !== currentVal);
-            const todosLosPjs = Object.keys(gameData.dynamicData.chars).filter(id => {
 
-                return id !== 'id_tplMANDATORY' && id !== pjId && !pjsYaAgregados.includes(id);
+            // =========================================================================
+            // 📡 EXTRAER TODOS LOS PERSONAJES DE LA NUEVA ESTRUCTURA COMPARTIMENTADA
+            // =========================================================================
+            const charsNode = gameData.dynamicData.chars;
+            let todasLasIdsExistentes = [];
+
+            if (charsNode.players || charsNode.npcs) {
+                if (charsNode.players) todasLasIdsExistentes = todasLasIdsExistentes.concat(Object.keys(charsNode.players));
+                if (charsNode.npcs) todasLasIdsExistentes = todasLasIdsExistentes.concat(Object.keys(charsNode.npcs));
+            } else {
+                todasLasIdsExistentes = Object.keys(charsNode);
+            }
+
+            // Filtrar IDs: Quitamos la plantilla obligatoria, al propio personaje y a los que ya están en su radar
+            const todosLosPjs = todasLasIdsExistentes.filter(id => {
+                return id !== 'id_tplMANDATORY' && id !== selectedId && !pjsYaAgregados.includes(id);
             });
 
+            // Creamos el elemento select de forma amigable
             const select = document.createElement('select');
-            select.style.padding = "2px";
-            select.style.background = "#222";
-            select.style.color = "#fff";
+            Object.assign(select.style, {
+                padding: "2px",
+                background: "#222",
+                color: "#fff",
+                border: "1px solid var(--accent, #ff4757)",
+                borderRadius: "3px"
+            });
 
             todosLosPjs.forEach(id => {
                 const option = new Option(id, id);
@@ -1933,85 +2186,134 @@ const estaEspiandoChars = extraCharIds.length > 0;
 
             select.value = currentVal;
 
+            // Variable de control para evitar cierres prematuros por conflicto blur/change
+            let yaGuardado = false;
+
             const guardar = () => {
+                if (yaGuardado) return;
+                yaGuardado = true;
+
                 const nuevoValor = select.value;
-                gameData.dynamicData.chars[pjId].detectedCharsNearbyList[index].nearby_pj_id = nuevoValor;
+                pj.detectedCharsNearbyList[index].nearby_pj_id = nuevoValor;
+                
+                // Forzamos a initGame a congelar la vista en el personaje actual para que no salte a Pepito
+                initGame(selectedId);
                 updateUI();
             };
 
+            // Evento prioritario para clics del mouse
             select.onchange = guardar;
-            select.onblur = updateUI; // Si hace clic fuera sin cambiar nada, revierte el select al texto normal
+            
+            // Salvavidas por si hace clic fuera sin cambiar nada
+            select.onblur = () => {
+                setTimeout(() => {
+                    if (!yaGuardado) updateUI();
+                }, 150);
+            };
+
+            select.onkeydown = (e) => {
+                if (e.key === 'Escape') updateUI();
+            };
 
             elemento.innerHTML = '';
             elemento.appendChild(select);
             select.focus();
+
+            // Desplegar automáticamente en navegadores modernos
+            if (typeof select.showPicker === 'function') {
+                try { select.showPicker(); } catch(e) {}
+            }
+        }
+
+        function actualizarUbicacionPersonajeDirecto(idPersonaje, nuevoSubAreaId) {
+            const pjNode = buscarObjetoPersonajePorId(idPersonaje);
+            if (!pjNode) return;
+
+            // Si se selecciona la opción vacía, limpiamos la ubicación pasándola a null
+            pjNode.currentSubArea_id = nuevoSubAreaId === "" ? null : nuevoSubAreaId;
+
+            // Ejecutamos la recarga completa del motor para re-calcular radares, niebla de guerra y prompts
+            initGame(idPersonaje);
+            updateUI();
+        }
+
+        function conmutarBooleanoDirecto(path, clave) {
+            if (!path || path[clave] === undefined) return;
+
+            // Invertimos el valor booleano directamente en la referencia de memoria
+            path[clave] = !path[clave];
+
+            // Refrescamos manteniendo el personaje actual en pantalla para que no salte a Pepito
+            if (typeof selectedId !== 'undefined') {
+                initGame(selectedId);
+            } else {
+                updateUI();
+            }
         }
 
         const UIComponents = {
             stats: (selectedId) => {
-                let pj = gameData.dynamicData.chars[selectedId];
+                let pj = buscarObjetoPersonajePorId(selectedId);
                 const currentPath = findSubAreaPath(pj.currentSubArea_id);
                 const pathString = currentPath.length > 0 ? currentPath.join(" ➔ ") : "Desconocida";
                 const displayWeather = getInheritedWeather(currentPath);
 
-                // =========================================================================
-                // 🛠️ FILTRADO INTELIGENTE DE SUBÁREAS PROFUNDAS (HOJAS TERMINALES)
-                // =========================================================================
-                
-                // 1. Función auxiliar para verificar si una subárea tiene más subáreas dentro
-                function tieneHijosSubArea(nodo) {
-                    if (!nodo || !nodo.subAreas) return false;
-                    // Si el objeto 'subAreas' tiene al menos una clave, no es el nivel más profundo
-                    return Object.keys(nodo.subAreas).length > 0;
-                }
-
-                // 2. Recolectamos de forma recursiva SOLO las subáreas finales del árbol
                 let selectOptions = "";
-                function generarOpcionesProfundas(nodoAreas, prefijo = "") {
-                    if (!nodoAreas) return;
 
-                    for (let idArea in nodoAreas) {
-                        // 🛑 FILTRO DE SEGURIDAD CRÍTICO: Si es el limbo, lo ignoramos por completo
-                        if (idArea === 'SYSTEM_LOST_FOUND') continue;
-                        const area = nodoAreas[idArea];
-                        const nombreMostrar = area.name || idArea;
-                        
-                        // Si NO tiene subáreas más adentro, ¡es una candidata válida para teletransporte!
-                        if (!tieneHijosSubArea(area)) {
-                            const labelCompleto = prefijo ? `${prefijo} ➔ ${nombreMostrar}` : nombreMostrar;
-                            const selected = idArea === pj.currentSubArea_id ? 'selected' : '';
-                            selectOptions += `<option value="${idArea}" ${selected}>${labelCompleto} (${idArea})</option>`;
-                        } 
-                        
-                        // Si tiene hijos, omitimos añadirla, pero seguimos explorando sus entrañas
-                        if (area.subAreas) {
-                            generarOpcionesProfundas(area.subAreas, prefijo ? `${prefijo} ➔ ${nombreMostrar}` : nombreMostrar);
-                        }
-                    }
-                }
+function tieneHijosSubArea(nodo) {
+    if (!nodo || !nodo.subAreas) return false;
+    return Object.keys(nodo.subAreas).length > 0;
+}
 
-                // Ejecutamos la recolección desde la raíz del almacenamiento del mapa mundial
-                if (gameData && gameData.dynamicData && gameData.dynamicData.worldStorage) {
-                    generarOpcionesProfundas(gameData.dynamicData.worldStorage);
-                }
-                // =========================================================================
+function generarOpcionesProfundas(nodoAreas, prefijo = "") {
+    if (!nodoAreas || typeof nodoAreas !== 'object') return;
+
+    for (let idArea in nodoAreas) {
+        // 🛑 FILTRO DE SEGURIDAD CRÍTICO: Si es el limbo, lo ignoramos por completo
+        if (idArea === 'SYSTEM_LOST_FOUND') continue;
+        
+        const area = nodoAreas[idArea];
+        const nombreMostrar = area.name || idArea;
+        const labelCompleto = prefijo ? `${prefijo} ➔ ${nombreMostrar}` : nombreMostrar;
+        
+        // 🔍 Si NO tiene subáreas más adentro, ¡es una zona final válida para el personaje!
+        if (!tieneHijosSubArea(area)) {
+            const selected = (idArea === pj.currentSubArea_id) ? 'selected' : '';
+            selectOptions += `<option value="${idArea}" ${selected}>📍 ${labelCompleto} (${idArea})</option>`;
+        } 
+        
+        // Si tiene subáreas dentro, seguimos explorando de forma recursiva hacia el fondo
+        if (area.subAreas) {
+            generarOpcionesProfundas(area.subAreas, labelCompleto);
+        }
+    }
+}
+
+// Ejecutamos tu recolector sobre el almacenamiento del mundo
+if (gameData && gameData.dynamicData && gameData.dynamicData.worldStorage) {
+    generarOpcionesProfundas(gameData.dynamicData.worldStorage);
+}
+
+// Información de la ruta en memoria para la interfaz amigable
+const tipoLista = gameData.dynamicData.chars.players?.[selectedId] ? "players" : "npcs";
+const pathStringInfo = `dynamicData.chars.${tipoLista}.${selectedId}.currentSubArea_id`;
 
                 return `<div class="data-box">
             <h3>📊 Ficha: ID: ${selectedId} | 
-            Apodo: <span class="editable-val" onclick="habilitarEdicionText(this, 'nick', gameData.dynamicData.chars['${selectedId}'])">${pj.nick}</span> | 
-            Edad: <span class="editable-val" onclick="habilitarEdicionNumber(this, 'age', gameData.dynamicData.chars['${selectedId}'], 0)">${pj.age}</span> | 
-            Género: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'fem', gameData.dynamicData.chars['${selectedId}'], 'Femenino ♀', 'Masculino ♂')">${pj.fem ? 'Femenino ♀' : 'Masculino ♂'}</span> | 
-            Omnipotente: <span class="editable-val" onclick="habilitarEdicionBoolean(this, 'omnipotent', gameData.dynamicData.chars['${selectedId}'])">${pj.omnipotent ? 'Sí' : 'No'}</span>
-            Contador Esporas Bosque mágico: <span class="editable-val" onclick="habilitarEdicion(this, 'magicForestToxin_h', gameData.dynamicData.chars['${selectedId}'], 0.00, 16.00)">${pj.magicForestToxin_h}</span> |
-            Estado: <span class="editable-val" onclick="habilitarEdicionText(this, 'state', gameData.dynamicData.chars['${selectedId}'])">${pj.state}</span></h3>
+                <div>
+            <b>Apodo:</b> <span id="edit-nick-${selectedId}">${pj.nick || 'Sin apodo'}</span><button class="btn-edit" onclick="habilitarEdicion(document.getElementById('edit-nick-${selectedId}'), 'nick', buscarObjetoPersonajePorId('${selectedId}'))">✏️</button></div>
+            <div><b>Edad: </b><span id="edit-age-${selectedId}">${pj.age || 'Sin edad'}</span><button class="btn-edit" onclick="habilitarEdicion(document.getElementById('edit-age-${selectedId}'), 'age', buscarObjetoPersonajePorId('${selectedId}'))">✏️</button></div>
+            Género: <span class="editable-val" style="cursor:pointer;" onclick="conmutarBooleanoDirecto(buscarObjetoPersonajePorId('${selectedId}'), 'fem')">${pj.fem ? 'Femenino ♀' : 'Masculino ♂'}</span><br>
+            Omnipotente: <span class="editable-val" style="cursor:pointer;" onclick="conmutarBooleanoDirecto(buscarObjetoPersonajePorId('${selectedId}'), 'omnipotent')">${pj.omnipotent ? 'Sí' : 'No'}</span>
+            <div><b>Contador Esporas Bosque mágico: </b><span id="edit-esporas-${selectedId}">${(pj.magicForestToxin_h !== undefined && pj.magicForestToxin_h !== null) ? pj.magicForestToxin_h : 'Inmune'}</span><button class="btn-edit" onclick="habilitarEdicion(document.getElementById('edit-esporas-${selectedId}'), 'magicForestToxin_h', buscarObjetoPersonajePorId('${selectedId}'), 0, ${gameData.worldMechanics.magicForestSpores.magicForestSporesImmunity})">✏️</button></div> | 
+            <b>Estado:</b> <span id="edit-state-${selectedId}">${pj.state || 'Sin estado'}</span><button class="btn-edit" onclick="habilitarEdicion(document.getElementById('edit-state-${selectedId}'), 'state', buscarObjetoPersonajePorId('${selectedId}'))">✏️</button></div>
             <hr>
             <div class="data-box">
             <h3>🗺️ Ubicación del Personaje</h3>
-            <p><strong>Ruta Actual:</strong> <span style="color: var(--accent);">${pathString}</span></p>
-            
+            <p><strong>Ruta Actual:</strong> <span style="color: var(--accent);">${pathString}</span></p>          
             <label><strong>Cambiar SubÁrea:</strong></label>
             <select class="nav-btn" style="background:#222; width:100%; margin-top:5px;" 
-                    onchange="updateValue('chars.${selectedId}.currentSubArea_id', this.value)">
+            onchange="actualizarUbicacionPersonajeDirecto('${selectedId}', this.value)">
                 <option value="">🚫 Ninguna (Suelo global)</option>
                 ${selectOptions}
             </select>
@@ -2114,8 +2416,9 @@ const estaEspiandoChars = extraCharIds.length > 0;
 
                 // Renderizador interno para listas de strings con controles de ordenación
                 const renderListaPlana = (lista, claveLista) => {
-                    if (lista.length === 0) return `<p style="color:#666; font-size:0.9em; padding-left:10px;">(Vacío)</p>`;
-                    return lista.map((item, idx) => `
+                    const listaFiltrada = lista.filter(item => item !== null && item !== undefined && String(item).trim() !== "");
+                    if (listaFiltrada.length === 0) return `<p style="color:#666; font-size:0.9em; padding-left:10px;">(Vacío)</p>`;
+                    return listaFiltrada.map((item, idx) => `
                         <div class="item-row" style="border-bottom: 1px solid #222; padding: 4px 10px; display:flex; justify-content:space-between; align-items:center;">
                             <div class="item-info" style="flex-grow: 1;">
                                 <span class="editable-val" style="cursor:pointer;" onclick="habilitarEdicionArrayStringPj(this, '${claveLista}', ${idx})">
@@ -2142,7 +2445,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
                         <div class="item-row" style="border-bottom: 1px solid #222; padding: 4px 10px; display:flex; justify-content:space-between; align-items:center;">
                             <div class="item-info" style="flex-grow: 1;">
                                 <strong>ID:</strong> <span class="editable-val" onclick="habilitarEdicionElegirIDPj(this, '${selectedId}', ${idx})">${item.nearby_pj_id}</span> | 
-                                <strong>Reconocido:</strong> <span class="editable-val" style="cursor:pointer; text-decoration:underline;" onclick="gameData.dynamicData.chars['${selectedId}'].detectedCharsNearbyList[${idx}].recognized = !gameData.dynamicData.chars['${selectedId}'].detectedCharsNearbyList[${idx}].recognized; updateUI();">${item.recognized ? 'Sí' : 'No'}</span>
+                                <strong>Reconocido:</strong> <span class="editable-val" style="cursor:pointer; text-decoration:underline;" onclick="conmutarBooleanoDirecto(buscarObjetoPersonajePorId('${selectedId}').detectedCharsNearbyList[${idx}], 'recognized')">${item.recognized ? 'Sí' : 'No'}</span>
                             </div>
                             <div class="item-actions" style="display:flex; gap:3px;">
                                 <button class="btn-sm" style="background:#34495e; padding: 2px 6px;" 
@@ -2235,7 +2538,7 @@ const estaEspiandoChars = extraCharIds.length > 0;
                 if (selectedId !== dynamicData.worldState.turnActionPlayer_id) {
                     return `<div style="text-align:center; padding: 20px; opacity: 0.8;">
                         <h3 style="color:var(--accent);">🔒 Control Desactivado</h3>
-                        <p>Estás viendo a <b>${gameData.dynamicData.chars[selectedId].nick}</b>, pero es el turno de actuar de <b>${dynamicData.worldState.turnActionPlayer_id}</b>.</p>
+                        <p>Estás viendo a <b>${buscarObjetoPersonajePorId(selectedId).nick}</b>, pero es el turno de actuar de <b>${dynamicData.worldState.turnActionPlayer_id}</b>.</p>
                         <p style="font-size:0.9em; color:#888;">Cambia al personaje del turno para elegir acciones o generar el prompt.</p>
                     </div>`;
                 } else {

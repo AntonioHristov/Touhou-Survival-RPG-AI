@@ -8,11 +8,8 @@ Cualquier bug descubierto, si es importante intentar arreglarlo, sino anotarlo
 *
 Limpieza código existente:
 Evitar repetir código, organizar mejor, hacerlo corto y entendible, seguir buenas prácticas, etc, antes de seguir implementando nuevas funcionalidades (excepto bugs importantes, claro)
-*
-
-*
-isPlayer
-Considerar eliminar booleano isPlayer de cada personaje y crear 2 nodos dentro de chars, con players y npcs (aplicando el cambio en index y sync)
+Intentar aplicar SOLID y DRY en index y Sync.
+Intentar traducir al inglés datosBase.json (todo salvo excepciones como contenido en memories) para ahorrar tokens
 *
 
 *
@@ -20,6 +17,11 @@ Varios jugadores en misma partida:
 Contenido de "lastNarration" guardarlo en todos los jugadores (no npcs), opcionalmente en una lista que guarda las últimas 3 de cada jugador para "memoria reciente detallada" para la IA.
 Actualizar turnActionPlayer_id en SyncJSON.html sin delegarlo a la IA (como los decays)
 Testear que sea jugable
+*
+
+*
+Mecánica hongos bosque mágico:
+retocar tiempos estado y añadir órdenes de estado repetibles que acaben en inmune (irrepetible al final)
 *
 
 *
@@ -38,6 +40,15 @@ Crear sección para subAreas, con la personalización existente añadiendo perso
 *
 
 *
+Personalización valores nuevo jugador:
+Si detecta que no existe ningún jugador o se quiere añadir un nuevo jugador a la plantilla, entonces te pide todos los valores con opción de plantilla según dificultad (que se puede personalizar al gusto del jugador). Si no existe ningún jugador te obliga a crear uno antes de empezar a jugar (aunque sea de una dificultad con valores por defecto) pero si existiese algún jugador no te obligaría.
+*
+
+*
+Hacer otra prueba de gameplay intentando que sea jugable y anotando aspectos a mejorar.
+*
+
+*
 GDD
 Actualizarlo
 *
@@ -48,18 +59,8 @@ Por ejemplo: valores por defecto a keys por defecto inexistentes (ej: si no hay 
 *
 
 *
-Personalización valores nuevo jugador:
-Si detecta que no existe ningún jugador o se quiere añadir un nuevo jugador a la plantilla, entonces te pide todos los valores con opción de plantilla según dificultad (que se puede personalizar al gusto del jugador). Si no existe ningún jugador te obliga a crear uno antes de empezar a jugar (aunque sea de una dificultad con valores por defecto) pero si existiese algún jugador no te obligaría.
-*
-
-*
 Eliminar datos antiguos y obsoletos:
 Si las dificultades se hicieron como plantilla, eliminar el rastro innecesario (no guardar la dificultad, quitar notas o datos obsoletos/antiguos de valores según dificultad, etc)
-*
-
-*
-Mecánica hongos bosque mágico:
-retocar tiempos estado y añadir órdenes de estado repetibles que acaben en inmune (irrepetible al final)
 *
 
 *
@@ -90,11 +91,16 @@ Orinar, defecar. La idea es darle realismo pero sería pura molesta y más token
 Época:
 Elegir si es antes, mediante o después de incidentes conocidos (ej: niebla escarlata), en caso de que sea antes o después de un incidente tener la opción de si podrían continuar los incidentes en la aventura o no (ej: siempre antes o después de X incidente sin pasar al siguiente incidente conocido nunca o... tener la chance)
 *
+
+*
+Espacio Contenedores:
+Mochilas, cofres, etc que tengan espacio limitado cada agujero almacenable.
+*
+
 *
 Encarnar Npcs:
 Opción de ser un npc conocido en vez de un humano outsider, por ejemplo: ser Reimu
 *
-
 
 *
 Extras:

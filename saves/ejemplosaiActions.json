@@ -22,7 +22,6 @@
             {
                 "op": "edit",
                 "path": [
-                    "chars",
                     "P1",
                     "energy",
                     0
@@ -32,12 +31,32 @@
             {
                 "op": "edit",
                 "path": [
-                    "chars",
                     "P1",
                     "hp",
                     0
                 ],
                 "value": 95
+            }
+        ]
+    }
+}
+
+{
+    "aiActions": {
+        "why": "Un hongo brillante crece rápidamente debido a la humedad mágica de la cocina.",
+        "sequence": [
+            {
+                "op": "create",
+                "to": [
+                    "P1",
+                    "inventory"
+                ],
+                "isObj": true,
+                "data": {
+                    "n": "Glow Mushroom",
+                    "desc": "A faint purple mushroom. It radiates magical residue.",
+                    "q": 1
+                }
             }
         ]
     }
@@ -134,13 +153,13 @@
             {
                 "op": "create",
                 "to": [
-                    "chars"
+                    "chars", "npcs"
                 ],
                 "key": "Fairy1",
                 "data": {
                     "nick": "Forest Fairy",
                     "race": "Youkai (Fairy)",
-                    "current_location": "MFTreeZone1",
+                    "currentSubArea_id": "MFTreeZone1",
                     "hp": [
                         45,
                         45
@@ -159,7 +178,6 @@
                 "op": "move",
                 "id": 2,
                 "to": [
-                    "chars",
                     "Fairy1",
                     "inventory"
                 ]
@@ -167,9 +185,8 @@
             {
                 "op": "edit",
                 "path": [
-                    "chars",
                     "Fairy1",
-                    "current_location"
+                    "currentSubArea_id"
                 ],
                 "value": "MFTreeZone2"
             },
@@ -187,12 +204,11 @@
 
 {
     "aiActions": {
-        "why": "Un hada traviesa embosca al jugador, le arrebata su amuleto y huye volando hacia el bosque profundo.",
+        "why": "Al limbo",
         "sequence": [
             {
                 "op": "create",
                 "to": [
-                    "chars",
                     "P1",
                     "inv",
                     "0"
@@ -213,6 +229,20 @@
                 "updates": {
                     "inLimbo": true
                 }
+            }
+        ]
+    }
+}
+
+{
+    "aiActions": {
+        "sequence": [
+            {
+                "op": "editRadar",
+                "addChars": [
+                    "Reimu"
+                    "syncJSON comprobar ids existentes"
+                ]
             }
         ]
     }
